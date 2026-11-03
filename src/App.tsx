@@ -361,6 +361,7 @@ export default function App() {
 
       // ب) جلب المرضى من الرابط المستقل (بدون /services/1/patients نهائياً)
       try {
+        await new Promise(r => setTimeout(r, 1500));
         const resPat = await fetch(API_ENDPOINTS.PATIENTS, {
           cache: 'no-store',
         });
@@ -449,7 +450,7 @@ export default function App() {
         showNotification('تمت المزامنة الكاملة مع MockAPI بنجاح!');
       }
     },
-    [services, showNotification]
+    [showNotification]
   );
 
   // جلب البيانات تلقائياً عند فتح الصفحة (Reload) وكل 12 ثانية لالتقاط أي حجز جديد من بوت n8n
@@ -457,9 +458,9 @@ export default function App() {
     syncAllFromAPI(false);
     const timer = setInterval(() => {
       syncAllFromAPI(false);
-    }, 12000);
+    }, 60000);
     return () => clearInterval(timer);
-  }, [syncAllFromAPI]);
+  }, []);
 
   // ============================================================================
   // 4. إرسال الخدمات الـ 4 إلى MockAPI بنقرة زر
