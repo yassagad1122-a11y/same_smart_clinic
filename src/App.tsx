@@ -2117,17 +2117,19 @@ export default function App() {
                 <label className="block font-bold text-slate-600 mb-1.5">
                   اسم المريض
                 </label>
-                <input
-                  name="patientName"
-                  required
-                  defaultValue={
-                    appointmentModal.editing?.patientName ||
-                    appointmentModal.prefill?.patientName ||
-                    ''
-                  }
-                  placeholder="مثال: يسي حلمي جاد"
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                />
+                <select
+  name="patientName"
+  required
+  defaultValue={appointmentModal.editing?.patientName || appointmentModal.prefill?.patientName || ""}
+  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 text-right"
+>
+  <option value="" disabled>اختر مريضاً من القائمة...</option>
+  {patients.map((patient) => (
+    <option key={patient.id} value={patient.name}>
+      {patient.name}
+    </option>
+  ))}
+</select>
               </div>
               <div>
                 <label className="block font-bold text-slate-600 mb-1.5">
