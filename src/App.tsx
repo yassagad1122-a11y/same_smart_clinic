@@ -1475,23 +1475,6 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
           </form>
 
           {/* أزرار سريعة للتجربة بضغطة واحدة */}
-          <div className="mt-6 pt-5 border-t border-slate-800">
-            <p className="text-xs text-slate-400 text-center mb-3">دخول سريع للتجربة:</p>
-            <div className="">
-
-              <button
-                type="button"
-                onClick={() => {
-                  const pat = { id: 'PAT-1', name: 'محمد علي', phone: '01012345678', email: 'mohamed@mail.com', role: 'patient' };
-                  localStorage.setItem('clinic_logged_user', JSON.stringify(pat));
-                  setCurrentUser(pat);
-                }}
-                className="w-full py-2.5 px-3 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs font-bold hover:bg-sky-500/20"
-              >
-                👤 دخول كمريض
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     );
