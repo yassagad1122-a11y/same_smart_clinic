@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import emailjs from '@emailjs/browser';
 import {
   LayoutGrid,
   Users,
@@ -260,6 +261,101 @@ export default function App() {
     setCurrentUser(null);
   };
 
+  // متغيرات نظام كود الأمان (OTP)
+  const [showOtpScreen, setShowOtpScreen] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [userEnteredOtp, setUserEnteredOtp] = useState('');
+  const [pendingPatient, setPendingPatient] = useState<any>(null);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [fullSignupData, setFullSignupData] = useState<any>(null);
+
+  // دالة إرسال كود التحقق للإيميل
+  const sendOtpEmail = async (userEmail: string, otpCode: string) => {
+    try {
+      setIsSendingOtp(true);
+      await emailjs.send(
+        'service_wzi547i',      // Service ID
+        'template_g3n7nsf',     // Template ID
+        {
+          to_email: userEmail,
+          otp_code: otpCode,
+        },
+        'hZPUVXx24iZV_-KT4'      // Public Key
+      );
+      return true;
+    } catch (error) {
+      console.error('خطأ في إرسال الإيميل:', error);
+      alert('حدث خطأ أثناء إرسال الكود، يرجى المحاولة مرة أخرى.');
+      return false;
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+// دالة مراجعة الكود اللي المريض كتبه
+const handleVerifyOtp = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // لو الكود اللي كتبه هو نفس الكود اللي اتبعتله
+  if (userEnteredOtp === generatedOtp) {
+    
+    // --- الجديد: حفظ البيانات في قاعدة البيانات (فقط لو كان حساب جديد) ---
+    if (fullSignupData) {
+      try {
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_PROJECT_URL;
+        const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+        // 1. الحفظ في قاعدة البيانات Supabase
+        if (SUPABASE_URL && SUPABASE_KEY) {
+          await fetch(`${SUPABASE_URL}/rest/v1/patient_accounts`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`,
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(fullSignupData)
+          });
+        }
+
+        // 2. حفظ نسخة محلية احتياطية (عشان يفضل مسجل على الجهاز)
+        const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
+        registeredPatients.push({
+          id: fullSignupData.id,
+          name: fullSignupData.name,
+          email: fullSignupData.email,
+          phone: fullSignupData.phone,
+          passwordHash: fullSignupData.password_hash,
+          role: 'patient'
+        });
+        localStorage.setItem('clinic_registered_patients', JSON.stringify(registeredPatients));
+      } catch (err) {
+        console.error('خطأ أثناء حفظ الحساب الجديد:', err);
+      }
+    }
+    // -------------------------------------------------------------
+
+    // الدخول بنجاح بعد التأكيد
+    localStorage.setItem('clinic_logged_user', JSON.stringify(pendingPatient));
+    setCurrentUser(pendingPatient);
+    
+    // تصفير الذاكرة وإخفاء شاشة الأرقام
+    setShowOtpScreen(false);
+    setUserEnteredOtp('');
+    setGeneratedOtp('');
+    setPendingPatient(null);
+    setFullSignupData(null); // مسح الذاكرة المؤقتة بعد الحفظ
+  } else {
+    // لو الكود غلط
+    alert('الكود الذي أدخلته غير صحيح، يرجى مراجعة الإيميل والمحاولة مرة أخرى.');
+  }
+};
+
+  /////////////////////////////////////////////////////////////
+  // --- متغيرات بوابة المريض الاحترافية --- //
+
+
   ///////////////////////////////////////////////////
 // --- متغيرات بوابة المريض الاحترافية ---
 const [portalTab, setPortalTab] = useState<'home' | 'book' | 'patients' | 'appointments'>('home');
@@ -455,6 +551,20 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
   //const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
   const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_KEY;
 
+  // دالة مساعدة لتشغيل نظام الـ OTP قبل الدخول
+  const handlePatientSuccess = async (userObj: any, userEmail: string) => {
+    // 1. توليد كود من 6 أرقام
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(otp);
+    setPendingPatient(userObj); // حفظ بيانات المريض مؤقتاً
+    
+    // 2. إرسال الإيميل وإظهار الشاشة
+    const isSent = await sendOtpEmail(userEmail, otp);
+    if (isSent) {
+      setShowOtpScreen(true);
+    }
+  };
+
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
@@ -515,8 +625,9 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
                 phone: cloudPatient.phone,
                 role: 'patient',
               };
-              localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
-              setCurrentUser(safeSessionUser);
+             localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+             setCurrentUser(safeSessionUser);
+            //  await handlePatientSuccess(safeSessionUser, cleanEmail);
               return;
             }
           }
@@ -541,8 +652,9 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
           phone: localPatient.phone,
           role: 'patient',
         };
-        localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
-        setCurrentUser(safeSessionUser);
+       // localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+       await handlePatientSuccess(safeSessionUser, cleanEmail);
+       // setCurrentUser(safeSessionUser);
       } else {
         setAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التأكد أو إنشاء حساب جديد.');
       }
@@ -579,44 +691,23 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
               return;
             }
           }
-
-         await fetch(`${SUPABASE_URL}/rest/v1/patient_accounts`, {
-          method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${SUPABASE_KEY}`,
-              Prefer: 'return=representation',
-            },
-            body: JSON.stringify({
-              id: newPatientId,
-              name: newPatientName,
-              email: cleanEmail,
-              phone: newPatientPhone,
-              password_hash: hashedInputPassword,
-              role: 'patient',
-              my_patients: [],
-              my_appointments: [],
-            }),
-          });
+// تجهيز بيانات المريض في الذاكرة المؤقتة (بدون حفظها الآن)
+const signupPayload = {
+  id: newPatientId,
+  name: newPatientName,
+  email: cleanEmail,
+  phone: newPatientPhone,
+  password_hash: hashedInputPassword,
+  role: 'patient',
+  my_patients: [],
+  my_appointments: []
+};
+setFullSignupData(signupPayload);
         } catch (err) {
           console.error('Supabase Signup Error:', err);
         }
       }
 
-      // ب. حفظ نسخة محلية مشفرة أيضاً في المتصفح
-      const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
-      if (!registeredPatients.some((p: any) => p.email.toLowerCase() === cleanEmail)) {
-        registeredPatients.push({
-          id: newPatientId,
-          name: newPatientName,
-          email: cleanEmail,
-          phone: newPatientPhone,
-          passwordHash: hashedInputPassword,
-          role: 'patient',
-        });
-        localStorage.setItem('clinic_registered_patients', JSON.stringify(registeredPatients));
-      }
 
       const safeSessionUser = {
         id: newPatientId,
@@ -625,8 +716,9 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
         phone: newPatientPhone,
         role: 'patient',
       };
-      localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
-      setCurrentUser(safeSessionUser);
+     // localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+     await handlePatientSuccess(safeSessionUser, cleanEmail);
+     // setCurrentUser(safeSessionUser);
     }
   };
 
@@ -1377,6 +1469,69 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
 //////////////////////////////////////////////////////
 // 1. لو مفيش حد مسجل دخول -> اعرض شاشة Login / Sign Up
   if (!currentUser) {
+
+    // --- شاشة إدخال كود التحقق (OTP) ---
+ // --- شاشة إدخال كود التحقق (OTP) ---
+ if (showOtpScreen) {
+  return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4" dir="rtl">
+      <div className="max-w-md w-full bg-slate-800 rounded-2xl p-8 border border-slate-700 shadow-2xl relative overflow-hidden">
+        {/* تأثير الإضاءة في الخلفية */}
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-sky-500 to-indigo-500"></div>
+        
+        <div className="text-center mb-8">
+          <div className="bg-sky-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-sky-500/20">
+            <ShieldCheck className="w-10 h-10 text-sky-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">كود الأمان (OTP)</h2>
+          <p className="text-sm text-slate-400">
+            تم إرسال كود من 6 أرقام إلى بريدك الإلكتروني.
+            <br /> يرجى إدخاله هنا لإتمام تسجيل الدخول.
+          </p>
+          <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+            <p className="text-xs text-amber-400">
+              ⚠️ تنبيه: يرجى التحقق من مجلد الرسائل المزعجة (Spam) إذا لم تجد الكود في البريد الوارد.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleVerifyOtp} className="space-y-5">
+          <div>
+            <input
+              type="text"
+              maxLength={6}
+              placeholder="أدخل الـ 6 أرقام"
+              className="w-full text-center tracking-[0.5em] text-3xl font-bold px-4 py-4 rounded-xl bg-slate-900 border border-slate-600 text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all placeholder:text-slate-600 placeholder:text-lg placeholder:tracking-normal placeholder:font-normal"
+              value={userEnteredOtp}
+              onChange={(e) => setUserEnteredOtp(e.target.value.replace(/\D/g, ''))} // السماح بالأرقام فقط
+              required
+            />
+          </div>
+          
+          <button
+            type="submit"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-400 hover:to-indigo-400 text-white font-semibold shadow-lg shadow-sky-500/25 transition-all flex items-center justify-center gap-2"
+          >
+            تأكيد الدخول
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              setShowOtpScreen(false);
+              setIsSendingOtp(false);
+            }}
+            className="w-full py-3 rounded-xl bg-transparent border-2 border-slate-700 hover:bg-slate-800 text-slate-300 font-semibold transition-all"
+          >
+            الرجوع وتعديل البيانات
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
     return (
       <div dir="rtl" className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-white">
         <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
