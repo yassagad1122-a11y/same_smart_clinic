@@ -236,6 +236,414 @@ const safeReadStorage = (key, fallback) => {
 };
 
 export default function App() {
+
+
+
+//////////////////////////////////////////////////////////////////////////
+
+  //// --- بداية نظام تسجيل الدخول والتفريق بين الدكتور والمريض ---
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    const saved = localStorage.getItem('clinic_logged_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authForm, setAuthForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+  });
+  const [authError, setAuthError] = useState('');
+
+  const handleLogout = () => {
+    localStorage.removeItem('clinic_logged_user');
+    setCurrentUser(null);
+  };
+
+  ///////////////////////////////////////////////////
+// --- متغيرات بوابة المريض الاحترافية ---
+const [portalTab, setPortalTab] = useState<'home' | 'book' | 'patients' | 'appointments'>('home');
+const [selectedPatientForBook, setSelectedPatientForBook] = useState('');
+const [selectedServiceForBook, setSelectedServiceForBook] = useState('');
+const [selectedDoctorForBook, setSelectedDoctorForBook] = useState('د. طارق السعيد');
+const [selectedDateForBook, setSelectedDateForBook] = useState(() => new Date().toISOString().split('T')[0]);
+const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
+const [newPatientForm, setNewPatientForm] = useState({ name: '', phone: '', age: '', gender: 'ذكر', notes: '' });
+const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+
+
+  /////////////////////////////////////////////////
+
+
+ // const handleAuthSubmit = (e: React.FormEvent) => {
+   // e.preventDefault();
+    //setAuthError('');
+
+    // قراءة بيانات الطبيب من .env
+    //const secretDocEmail = import.meta.env.VITE_DOCTOR_EMAIL;
+    //const secretDocPass = import.meta.env.VITE_DOCTOR_PASSWORD;
+
+    // --- 1. حالة تسجيل الدخول (Login) ---
+    //if (authMode === 'login') {
+      // أ. هل هو الطبيب؟
+      //if (
+        //secretDocEmail &&
+        //secretDocPass &&
+        //authForm.email.trim().toLowerCase() === secretDocEmail.trim().toLowerCase() &&
+        //authForm.password === secretDocPass
+      //) {
+        //const doctorUser = { id: 'DOC-ADMIN', name: 'د. طارق السعيد', email: secretDocEmail, role: 'doctor' };
+        //localStorage.setItem('clinic_logged_user', JSON.stringify(doctorUser));
+      //  setCurrentUser(doctorUser);
+        //return;
+      //}
+      
+      // ب. التحقق من المرضى المسجلين (قراءة من localStorage)
+      //const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
+      //const patient = registeredPatients.find(
+        //(p: any) => p.email.toLowerCase() === authForm.email.trim().toLowerCase() && p.password === authForm.password
+      //);
+
+      //if (patient) {
+        //localStorage.setItem('clinic_logged_user', JSON.stringify(patient));
+        //setCurrentUser(patient);
+      //} else {
+        //setAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التأكد أو إنشاء حساب جديد.');
+      //}
+      //return;
+    //}
+
+    // --- 2. حالة إنشاء حساب جديد (Sign Up) ---
+   // if (authMode === 'signup') {
+     // if (!authForm.phone.trim()) {
+       // setAuthError('يرجى إدخال رقم الهاتف لربط حسابك بملفك الطبي');
+        //return;
+      //}
+
+      // قراءة المرضى الحاليين
+     // const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
+      
+      // التحقق إذا كان البريد مستخدم مسبقاً
+      //if (registeredPatients.some((p: any) => p.email.toLowerCase() === authForm.email.trim().toLowerCase())) {
+        //setAuthError('هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.');
+        //return;
+      //}
+
+      // إنشاء المريض الجديد وحفظه
+      //const newPatient = {
+        //id: 'PAT-' + authForm.phone.trim(),
+        //name: authForm.name.trim() || 'مريض العيادة',
+        //email: authForm.email.trim(),
+        //phone: authForm.phone.trim(),
+        //password: authForm.password, // حفظ الباسورد للتحقق منه لاحقاً
+        //role: 'patient',
+      //};
+
+      //registeredPatients.push(newPatient);
+      //localStorage.setItem('clinic_registered_patients', JSON.stringify(registeredPatients));
+      
+      // تسجيل الدخول مباشرة بعد إنشاء الحساب
+      //localStorage.setItem('clinic_logged_user', JSON.stringify(newPatient));
+      //setCurrentUser(newPatient);
+    //}
+  //};
+
+
+  // دالة تشفير كلمة المرور (SHA-256) قبل حفظها في localStorage
+  const hashPassword = async (password: string): Promise<string> => {
+    const msgBuffer = new TextEncoder().encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  };
+
+ // const handleAuthSubmit = async (e: React.FormEvent) => {
+ //   e.preventDefault();
+ //   setAuthError('');
+
+   // const secretDocEmail = import.meta.env.VITE_DOCTOR_EMAIL;
+   // const secretDocPass = import.meta.env.VITE_DOCTOR_PASSWORD;
+
+    // تشفير الباسورد الذي أدخله المستخدم فوراً
+   // const hashedInputPassword = await hashPassword(authForm.password);
+
+    // --- 1. حالة تسجيل الدخول (Login) ---
+    //if (authMode === 'login') {
+      // أ. هل هو الطبيب؟
+      //if (
+        //secretDocEmail &&
+        //secretDocPass &&
+        //authForm.email.trim().toLowerCase() === secretDocEmail.trim().toLowerCase() &&
+        //authForm.password === secretDocPass
+      //) {
+       // const doctorUser = { id: 'DOC-ADMIN', name: 'د. طارق السعيد', email: secretDocEmail, role: 'doctor' };
+        //localStorage.setItem('clinic_logged_user', JSON.stringify(doctorUser));
+        //setCurrentUser(doctorUser);
+        //return;
+     // }
+
+      // ب. التحقق من المرضى المسجلين بمقارنة الباسورد المشفر
+      //const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
+      //const patient = registeredPatients.find(
+       // (p: any) =>
+        //  p.email.toLowerCase() === authForm.email.trim().toLowerCase() &&
+         // (p.passwordHash === hashedInputPassword || p.password === authForm.password)
+      //);
+
+      //if (patient) {
+        // نحفظ بيانات الدخول بدون كلمة المرور نهائياً لزيادة الأمان
+        //const safeSessionUser = {
+          //id: patient.id,
+          //name: patient.name,
+          //email: patient.email,
+          //phone: patient.phone,
+          //role: 'patient',
+        //};
+        //localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+        //setCurrentUser(safeSessionUser);
+      //} else {
+        //setAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التأكد أو إنشاء حساب جديد.');
+     // }
+      //return;
+   // }
+
+    // --- 2. حالة إنشاء حساب جديد (Sign Up) ---
+    //if (authMode === 'signup') {
+      //if (!authForm.phone.trim()) {
+        //setAuthError('يرجى إدخال رقم الهاتف لربط حسابك بملفك الطبي');
+        //return;
+      //}
+
+     // const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
+
+      //if (registeredPatients.some((p: any) => p.email.toLowerCase() === authForm.email.trim().toLowerCase())) {
+        //setAuthError('هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.');
+        //return;
+      //}
+
+      // حفظ الحساب في القائمة مع الباسورد المشفر (passwordHash) فقط بدون الباسورد الأصلي
+      //const newPatientRecord = {
+        //id: 'PAT-' + authForm.phone.trim(),
+        //name: authForm.name.trim() || 'مريض العيادة',
+        //email: authForm.email.trim(),
+        //phone: authForm.phone.trim(),
+        //passwordHash: hashedInputPassword, // مشفر بـ SHA-256
+        //role: 'patient',
+      //};
+
+     // registeredPatients.push(newPatientRecord);
+     // localStorage.setItem('clinic_registered_patients', JSON.stringify(registeredPatients));
+
+      // جلسة الدخول الحالية بدون أي باسورد
+     // const safeSessionUser = {
+       // id: newPatientRecord.id,
+       // name: newPatientRecord.name,
+       // email: newPatientRecord.email,
+       // phone: newPatientRecord.phone,
+       // role: 'patient',
+     // };
+     // localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+     // setCurrentUser(safeSessionUser);
+   // }
+ // };
+
+
+
+
+ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  //const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
+  const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_KEY;
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+
+    const secretDocEmail = import.meta.env.VITE_DOCTOR_EMAIL;
+    const secretDocPass = import.meta.env.VITE_DOCTOR_PASSWORD;
+
+    // تشفير الباسورد الذي أدخله المستخدم بـ SHA-256
+    const hashedInputPassword = await hashPassword(authForm.password);
+    const cleanEmail = authForm.email.trim().toLowerCase();
+
+    //--- 1. حالة تسجيل الدخول (Login) ---
+    if (authMode === 'login') {
+     //  أ. هل هو الطبيب؟
+      if (
+        secretDocEmail &&
+        secretDocPass &&
+        cleanEmail === secretDocEmail.trim().toLowerCase() &&
+        authForm.password === secretDocPass
+      ) {
+        const doctorUser = { id: 'DOC-ADMIN', name: 'د. طارق السعيد', email: secretDocEmail, role: 'doctor' };
+        localStorage.setItem('clinic_logged_user', JSON.stringify(doctorUser));
+        setCurrentUser(doctorUser);
+        return;
+      }
+
+      // ب. البحث عن حساب المريض في Supabase أولاً (ليعمل من أي هاتف أو جهاز)
+      if (SUPABASE_URL && SUPABASE_KEY) {
+       try {
+          const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(cleanEmail)}&select=*`,
+            {
+              headers: {
+                apikey: SUPABASE_KEY,
+                Authorization: `Bearer ${SUPABASE_KEY}`,
+              },
+            }
+          );
+          if (res.ok) {
+            const rows = await res.json();
+            const cloudPatient = rows[0];
+
+            if (cloudPatient && cloudPatient.password_hash === hashedInputPassword) {
+               //استرجاع ملفات المريض وحجوزاته المحفوظة على السحابة ووضعها في المتصفح الحالي
+              const patKey = `clinic_my_patients_${cloudPatient.email || cloudPatient.phone}`;
+              const aptKey = `clinic_my_apts_${cloudPatient.email || cloudPatient.phone}`;
+              if (Array.isArray(cloudPatient.my_patients) && cloudPatient.my_patients.length > 0) {
+                localStorage.setItem(patKey, JSON.stringify(cloudPatient.my_patients));
+              }
+              if (Array.isArray(cloudPatient.my_appointments) && cloudPatient.my_appointments.length > 0) {
+                localStorage.setItem(aptKey, JSON.stringify(cloudPatient.my_appointments));
+              }
+
+              const safeSessionUser = {
+                id: cloudPatient.id,
+                name: cloudPatient.name,
+               email: cloudPatient.email,
+                phone: cloudPatient.phone,
+                role: 'patient',
+              };
+              localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+              setCurrentUser(safeSessionUser);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Supabase Login Error:', err);
+        }
+      }
+
+      // ج. التحقق الاحتياطي من localStorage لو الحساب قديم على نفس الجهاز
+      const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
+      const localPatient = registeredPatients.find(
+        (p: any) =>
+          p.email.toLowerCase() === cleanEmail &&
+          (p.passwordHash === hashedInputPassword || p.password === authForm.password)
+      );
+
+      if (localPatient) {
+        const safeSessionUser = {
+          id: localPatient.id,
+          name: localPatient.name,
+          email: localPatient.email,
+          phone: localPatient.phone,
+          role: 'patient',
+        };
+        localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+        setCurrentUser(safeSessionUser);
+      } else {
+        setAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التأكد أو إنشاء حساب جديد.');
+      }
+      return;
+    }
+
+    // --- 2. حالة إنشاء حساب جديد (Sign Up) ---
+    if (authMode === 'signup') {
+      if (!authForm.phone.trim()) {
+        setAuthError('يرجى إدخال رقم الهاتف لربط حسابك بملفك الطبي');
+        return;
+      }
+
+      const newPatientId = 'PAT-' + authForm.phone.trim();
+      const newPatientName = authForm.name.trim() || 'مريض العيادة';
+      const newPatientPhone = authForm.phone.trim();
+
+      // أ. حفظ الحساب الجديد في سحابة Supabase (مع الباسورد المشفر)
+      if (SUPABASE_URL && SUPABASE_KEY) {
+        try {
+          const checkRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(cleanEmail)}&select=email`,
+            {
+              headers: {
+                apikey: SUPABASE_KEY,
+                Authorization: `Bearer ${SUPABASE_KEY}`,
+              },
+            }
+          );
+          if (checkRes.ok) {
+            const existing = await checkRes.json();
+            if (existing.length > 0) {
+              setAuthError('هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.');
+              return;
+            }
+          }
+
+         await fetch(`${SUPABASE_URL}/rest/v1/patient_accounts`, {
+          method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: SUPABASE_KEY,
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+              Prefer: 'return=representation',
+            },
+            body: JSON.stringify({
+              id: newPatientId,
+              name: newPatientName,
+              email: cleanEmail,
+              phone: newPatientPhone,
+              password_hash: hashedInputPassword,
+              role: 'patient',
+              my_patients: [],
+              my_appointments: [],
+            }),
+          });
+        } catch (err) {
+          console.error('Supabase Signup Error:', err);
+        }
+      }
+
+      // ب. حفظ نسخة محلية مشفرة أيضاً في المتصفح
+      const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
+      if (!registeredPatients.some((p: any) => p.email.toLowerCase() === cleanEmail)) {
+        registeredPatients.push({
+          id: newPatientId,
+          name: newPatientName,
+          email: cleanEmail,
+          phone: newPatientPhone,
+          passwordHash: hashedInputPassword,
+          role: 'patient',
+        });
+        localStorage.setItem('clinic_registered_patients', JSON.stringify(registeredPatients));
+      }
+
+      const safeSessionUser = {
+        id: newPatientId,
+        name: newPatientName,
+        email: cleanEmail,
+        phone: newPatientPhone,
+        role: 'patient',
+      };
+      localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+      setCurrentUser(safeSessionUser);
+    }
+  };
+
+
+ 
+
+
+
+  // --- نهاية دالة تسجيل الدخول ---
+
+
+//////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
   // التبويب النشط
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -963,6 +1371,884 @@ export default function App() {
     };
   }, [activeTab, patients.length, visits.length, services.length]);
 
+
+
+
+//////////////////////////////////////////////////////
+// 1. لو مفيش حد مسجل دخول -> اعرض شاشة Login / Sign Up
+  if (!currentUser) {
+    return (
+      <div dir="rtl" className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-white">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
+          <div className="text-center mb-6">
+            <div className="w-14 h-14 bg-teal-500/20 text-teal-400 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-teal-500/30">
+              <Stethoscope className="w-8 h-8" />
+            </div>
+            <h1 className="text-2xl font-bold text-white">عيادة الابتسامة الذكية</h1>
+            <p className="text-slate-400 text-sm mt-1">تسجيل الدخول للمرضى والأطباء</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-800 rounded-xl mb-6">
+            <button
+              type="button"
+              onClick={() => { setAuthMode('login'); setAuthError(''); }}
+              className={`py-2.5 rounded-lg text-sm font-bold transition ${
+                authMode === 'login' ? 'bg-teal-500 text-slate-950' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              تسجيل دخول (Login)
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+              className={`py-2.5 rounded-lg text-sm font-bold transition ${
+                authMode === 'signup' ? 'bg-teal-500 text-slate-950' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              حساب جديد (Sign Up)
+            </button>
+          </div>
+
+          {authError && (
+            <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
+              {authError}
+            </div>
+          )}
+
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
+            {authMode === 'signup' && (
+              <div>
+                <label className="block text-xs text-slate-300 mb-1">اسم </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="name"
+                  value={authForm.name}
+                  onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs text-slate-300 mb-1">البريد الإلكتروني</label>
+              <input
+                type="email"
+                required
+                placeholder="email"
+                value={authForm.email}
+                onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm"
+              />
+            </div>
+            {authMode === 'signup' && (
+  <div>
+    <label className="block text-xs text-slate-300 mb-1">رقم الهاتف (للمريض لربط ملفه)</label>
+    <input
+      type="tel"
+      placeholder="phone"
+      value={authForm.phone}
+      onChange={(e) => setAuthForm({ ...authForm, phone: e.target.value })}
+      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700"
+    />
+  </div>
+)}
+
+            <div>
+              <label className="block text-xs text-slate-300 mb-1">كلمة المرور</label>
+              <input
+                type="password"
+                required
+                placeholder="password"
+                value={authForm.password}
+                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition"
+            >
+              {authMode === 'login' ? 'دخول للنظام' : 'إنشاء حساب'}
+            </button>
+          </form>
+
+          {/* أزرار سريعة للتجربة بضغطة واحدة */}
+          <div className="mt-6 pt-5 border-t border-slate-800">
+            <p className="text-xs text-slate-400 text-center mb-3">دخول سريع للتجربة:</p>
+            <div className="">
+
+              <button
+                type="button"
+                onClick={() => {
+                  const pat = { id: 'PAT-1', name: 'محمد علي', phone: '01012345678', email: 'mohamed@mail.com', role: 'patient' };
+                  localStorage.setItem('clinic_logged_user', JSON.stringify(pat));
+                  setCurrentUser(pat);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs font-bold hover:bg-sky-500/20"
+              >
+                👤 دخول كمريض
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. لو اللي مسجل دخول هو "مريض" (role === 'patient') -> يفتح له Patient Portal خاص بيه فقط
+// 2. بوابة المريض الاحترافية (Professional Patient Portal)
+if (currentUser.role === 'patient') {
+  const CLINIC_TIME_SLOTS = [
+    '10:00 ص', '10:30 ص', '11:00 ص', '11:30 ص',
+    '12:00 م', '12:30 م', '01:00 م', '01:30 م',
+    '04:00 م', '04:30 م', '05:00 م', '05:30 م',
+    '06:00 م', '06:30 م', '07:00 م', '07:30 م',
+    '08:00 م', '08:30 م', '09:00 م'
+  ];
+
+  // فحص هل المريض حضر العيادة وتم تسجيل زيارته في قسم "الزيارات والمتابعة" لدى الدكتور؟
+  const isAppointmentCompletedInVisits = (apt: any) => {
+    if (apt.status === 'مكتمل' || apt.status === 'Completed') return true;
+    return visits.some(
+      (v: any) =>
+        (v.patientName?.trim() === apt.patientName?.trim() || v.patientId === apt.patientId) &&
+        (!v.date || !apt.date || v.date >= apt.date)
+    );
+  };
+
+  // فحص هل المريض لديه حجز نشط لم يكتمل بعد؟
+  const hasActiveUncompletedBooking = (patientName: string) => {
+    if (!patientName) return false;
+    return appointments.some(
+      (apt: any) =>
+        apt.patientName?.trim().toLowerCase() === patientName.trim().toLowerCase() &&
+        apt.status !== 'ملغي' &&
+        apt.status !== 'Cancelled' &&
+        !isAppointmentCompletedInVisits(apt)
+    );
+  };
+
+
+
+
+
+  //const myRegisteredPatients = patients.filter(
+    //(p: any) =>
+     // p.phone === currentUser.phone ||
+     // p.createdByAccount === currentUser.email ||
+    //  p.name?.trim() === currentUser.name?.trim()
+  //);
+
+  //const myPatientNames = new Set([
+    //currentUser.name?.trim().toLowerCase(),
+    //...myRegisteredPatients.map((p: any) => p.name?.trim().toLowerCase()),
+  //]);
+
+  //const myAppointments = appointments.filter(
+   // (apt: any) =>
+   //   apt.phone === currentUser.phone ||
+  //    myPatientNames.has(apt.patientName?.trim().toLowerCase())
+ // );
+
+// 1. حفظ واسترجاع المرضى الخاصين بهذا الحساب حصرياً (ضد الـ Reload)
+//const storagePatientsKey = `clinic_my_patients_${currentUser.email || currentUser.phone}`;
+//co/nst [myRegisteredPatients, setMyRegisteredPatients] = useState<any[]>(() => {
+ // const saved = localStorage.getItem(storagePatientsKey);
+  //if (saved) return JSON.parse(saved);
+  //return patients.filter(
+   // (p: any) =>
+    //  String(p.phone).trim() === String(currentUser.phone).trim() ||
+     // String(p.createdByAccount).trim().toLowerCase() === String(currentUser.email).trim().toLowerCase()
+  //);
+//});
+
+//useEffect(() => {
+ // localStorage.setItem(storagePatientsKey, JSON.stringify(myRegisteredPatients));
+//}, [myRegisteredPatients, storagePatientsKey]);
+
+// 2. حفظ واسترجاع مواعيد هذا الحساب حصرياً (ضد الـ Reload)
+//const storageAptsKey = `clinic_my_apts_${currentUser.email || currentUser.phone}`;
+//const [myAppointments, setMyAdminAppointments] = useState<any[]>(() => {
+ // const saved = localStorage.getItem(storageAptsKey);
+  //if (saved) return JSON.parse(saved);
+  //const myNames = new Set([
+   // currentUser.name?.trim().toLowerCase(),
+   // ...myRegisteredPatients.map((p: any) => p.name?.trim().toLowerCase()),
+  //]);
+  //return appointments.filter(
+    //(apt: any) =>
+    //  String(apt.phone).trim() === String(currentUser.phone).trim() ||
+   //   myNames.has(apt.patientName?.trim().toLowerCase())
+  //);
+///});
+
+//useEffect(() => {
+ // localStorage.setItem(storageAptsKey, JSON.stringify(myAppointments));
+//}, [myAppointments, storageAptsKey]);
+
+
+
+// 1. استرجاع ودمج ملفات المرضى الخاصة بحساب العميل (ثابتة ضد الـ Reload وبدون Hooks)
+const storagePatientsKey = `clinic_my_patients_${currentUser.email || currentUser.phone}`;
+const savedPortalPatients = JSON.parse(localStorage.getItem(storagePatientsKey) || '[]');
+const myRegisteredPatients = [
+  ...savedPortalPatients,
+  ...patients.filter(
+    (p: any) =>
+      (String(p.phone).trim() === String(currentUser.phone).trim() ||
+        String(p.createdByAccount).trim().toLowerCase() === String(currentUser.email).trim().toLowerCase()) &&
+      !savedPortalPatients.some((sp: any) => sp.id === p.id || sp.name === p.name)
+  ),
+];
+
+const myPatientNames = new Set([
+  currentUser.name?.trim().toLowerCase(),
+  ...myRegisteredPatients.map((p: any) => p.name?.trim().toLowerCase()),
+]);
+
+// 2. استرجاع ودمج حجوزات العميل (ثابتة ضد الـ Reload وبدون Hooks)
+const storageAptsKey = `clinic_my_apts_${currentUser.email || currentUser.phone}`;
+const savedPortalApts = JSON.parse(localStorage.getItem(storageAptsKey) || '[]');
+const myAppointments = [
+  ...savedPortalApts,
+  ...appointments.filter(
+    (apt: any) =>
+      (String(apt.phone).trim() === String(currentUser.phone).trim() ||
+        myPatientNames.has(apt.patientName?.trim().toLowerCase())) &&
+      !savedPortalApts.some((sa: any) => sa.id === apt.id)
+  ),
+];
+
+
+
+
+
+  //////////////////////
+// 1. دالة تسجيل ملف مريض جديد من بوابة العميل + حفظه في الـ API الخاص بالدكتور
+const handleAddPatientFromPortal = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!newPatientForm.name.trim() || !newPatientForm.phone.trim()) {
+    setPortalMessage({ type: 'error', text: 'يرجى إدخال اسم المريض ورقم الهاتف!' });
+    return;
+  }
+
+  const exists = patients.some(
+    (p: any) => p.name?.trim().toLowerCase() === newPatientForm.name.trim().toLowerCase()
+  );
+  if (exists) {
+    setPortalMessage({ type: 'error', text: 'هذا الاسم مسجل بالفعل في ملفات المرضى، يمكنك الحجز له مباشرة.' });
+    return;
+  }
+
+  const newPatPayload = {
+    id: 'PAT-' + Date.now().toString().slice(-5),
+    name: newPatientForm.name.trim(),
+    phone: newPatientForm.phone.trim(),
+    age: Number(newPatientForm.age) || 25,
+    gender: newPatientForm.gender,
+    notes: newPatientForm.notes.trim() || 'تم التسجيل من بوابة المريض',
+    createdByAccount: currentUser.email,
+    createdAt: new Date().toISOString().split('T')[0],
+  };
+
+  try {
+    // إرسال المريض الجديد مباشرة إلى الـ API الخاص بصفحة الدكتور
+    let savedPat = newPatPayload;
+    if (typeof API_ENDPOINTS !== 'undefined' && API_ENDPOINTS.PATIENTS) {
+      const res = await fetch(API_ENDPOINTS.PATIENTS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPatPayload),
+      });
+      if (res.ok) {
+        savedPat = await res.json();
+      }
+    }
+
+    const updatedPatients = [savedPat, ...patients];
+    setPatients(updatedPatients);
+
+    localStorage.setItem(storagePatientsKey, JSON.stringify([savedPat, ...myRegisteredPatients]));
+
+    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(updatedPatients));
+
+    ////////////////////
+
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      fetch(
+        `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(currentUser.email.toLowerCase())}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+         // body: JSON.stringify({ my_appointments: [savedApt, ...myAppointments] }),
+         body: JSON.stringify({ my_patients: [savedPat, ...myRegisteredPatients] }),
+        }
+      ).catch(() => {});
+    }
+
+    ///////////////////////
+    setSelectedPatientForBook(savedPat.name);
+    setNewPatientForm({ name: '', phone: '', age: '', gender: 'ذكر', notes: '' });
+    setPortalMessage({ type: 'success', text: `تم فتح ملف طبي للمريض "${savedPat.name}" وحفظه في قاعدة البيانات السحابية بنجاح!` });
+    setPortalTab('book');
+  } catch (err) {
+    setPortalMessage({ type: 'error', text: 'حدث خطأ أثناء الاتصال بالـ API، يرجى المحاولة مرة أخرى.' });
+  }
+};
+
+// 2. دالة تأكيد حجز الموعد من الجدول + حفظه في الـ API الخاص بالدكتور
+const handleBookFromPortal = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setPortalMessage(null);
+
+  if (!selectedPatientForBook) {
+    setPortalMessage({ type: 'error', text: 'يجب اختيار اسم المريض أولاً (أو تسجيل ملف مريض جديد قبل الحجز)!' });
+    return;
+  }
+  if (!selectedServiceForBook) {
+    setPortalMessage({ type: 'error', text: 'يرجى اختيار الخدمة المطلوبة!' });
+    return;
+  }
+  if (!selectedTimeSlot) {
+    setPortalMessage({ type: 'error', text: 'يرجى اختيار ساعة الموعد من جدول المواعيد المتاحة بالأسفل!' });
+    return;
+  }
+
+  if (hasActiveUncompletedBooking(selectedPatientForBook)) {
+    setPortalMessage({
+      type: 'error',
+      text: `عفواً، المريض (${selectedPatientForBook}) لديه حجز نشط بالفعل! لا يمكن حجز موعد آخر لنفس المريض إلا بعد حضوره العيادة وتسجيل الزيارة والمتابعة لدى الطبيب. يمكنك تسجيل مريض آخر والحجز له.`,
+    });
+    return;
+  }
+
+  const slotTaken = appointments.some(
+    (apt: any) =>
+      apt.date === selectedDateForBook &&
+      apt.time === selectedTimeSlot &&
+      apt.status !== 'ملغي'
+  );
+  if (slotTaken) {
+    setPortalMessage({ type: 'error', text: 'هذا التوقيت تم حجزه للتو، يرجى اختيار توقيت آخر متاح من الجدول.' });
+    return;
+  }
+
+  const patObj = patients.find((p: any) => p.name === selectedPatientForBook);
+  const srvObj = services.find((s: any) => s.name === selectedServiceForBook);
+
+  const newAptPayload = {
+    id: 'APT-' + Date.now().toString().slice(-5),
+    patientId: patObj?.id || 'PAT-PORTAL',
+    patientName: selectedPatientForBook,
+    phone: patObj?.phone || currentUser.phone,
+    doctor: selectedDoctorForBook,
+    service: selectedServiceForBook,
+    price: srvObj?.price || 300,
+    date: selectedDateForBook,
+    time: selectedTimeSlot,
+    status: 'قيد الانتظار',
+    source: 'بوابة المريض',
+  };
+
+  try {
+    // إرسال الحجز الجديد مباشرة إلى الـ API الخاص بصفحة الدكتور
+    let savedApt = newAptPayload;
+    if (typeof API_ENDPOINTS !== 'undefined' && API_ENDPOINTS.APPOINTMENTS) {
+      const res = await fetch(API_ENDPOINTS.APPOINTMENTS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAptPayload),
+      });
+      if (res.ok) {
+        savedApt = await res.json();
+      }
+    }
+
+    const updatedApts = [savedApt, ...appointments];
+    setAppointments(updatedApts);
+
+    localStorage.setItem(storageAptsKey, JSON.stringify([savedApt, ...myAppointments]));
+
+
+    localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(updatedApts));
+    setSelectedTimeSlot('');
+    setPortalMessage({
+      type: 'success',
+      text: `تم حجز موعد للمريض "${selectedPatientForBook}" يوم ${selectedDateForBook} الساعة ${selectedTimeSlot} وحفظه في السحابة بنجاح!`,
+    });
+    setPortalTab('appointments');
+  } catch (err) {
+    setPortalMessage({ type: 'error', text: 'حدث خطأ أثناء حفظ الموعد في الـ API.' });
+  }
+};
+
+
+  /////////////////////
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-slate-950 text-white font-sans pb-16">
+      <div className="bg-gradient-to-l from-teal-900/50 via-slate-900 to-slate-950 border-b border-slate-800">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-600 text-slate-950 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <Stethoscope className="w-9 h-9" />
+              </div>
+              <div>
+                <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                  ✨ البوابة الذكية للمرضى والحجوزات الفورية
+                </span>
+                <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-2">
+                  أهلاً بك، {currentUser.name} 👋
+                </h1>
+                <p className="text-slate-400 text-xs mt-1">
+                  إدارة ملفات عائلتك الطبية، استعراض الخدمات، وحجز المواعيد المباشرة من جدول العيادة
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setPortalTab('book')}
+                className="px-5 py-3 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-teal-500/20 transition cursor-pointer"
+              >
+                📅 احجز موعداً الآن
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-3 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-xs transition cursor-pointer"
+              >
+                🚪 تسجيل الخروج
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-slate-800/80">
+            {[
+              { id: 'home', label: '✨ خدمات العيادة والأسعار', count: services.length },
+              { id: 'patients', label: '👥 تسجيل وملفات المرضى', count: myRegisteredPatients.length },
+              { id: 'book', label: '🕒 جدول المواعيد والحجز', count: null },
+              { id: 'appointments', label: '📋 حجوزاتي ومتابعة الزيارات', count: myAppointments.length },
+            ].map((t: any) => (
+              <button
+                key={t.id}
+                onClick={() => { setPortalTab(t.id as any); setPortalMessage(null); }}
+                className={`px-5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                  portalTab === t.id
+                    ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20'
+                    : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 border border-slate-800'
+                }`}
+              >
+                <span>{t.label}</span>
+                {t.count !== null && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                    portalTab === t.id ? 'bg-slate-950 text-teal-400' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {t.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 mt-8 space-y-8">
+        {portalMessage && (
+          <div className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between ${
+            portalMessage.type === 'error'
+              ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+          }`}>
+            <span>{portalMessage.text}</span>
+            <button onClick={() => setPortalMessage(null)} className="text-slate-400 hover:text-white">✕</button>
+          </div>
+        )}
+
+        {portalTab === 'home' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-extrabold text-white">🦷 خدمات العيادة التخصصية</h2>
+                <p className="text-xs text-slate-400 mt-1">اختر الخدمة المناسبة لك واحجز موعدك مباشرة من الجدول التفاعلي</p>
+              </div>
+              <button
+                onClick={() => setPortalTab('patients')}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-teal-400 text-xs font-bold hover:bg-slate-800"
+              >
+                + تسجيل ملف مريض جديد
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {services.map((srv: any) => (
+                <div
+                  key={srv.id}
+                  className="group bg-slate-900/90 border border-slate-800 hover:border-teal-500/50 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between shadow-xl"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                        {srv.category || 'خدمة طبية'}
+                      </span>
+                      <span className="text-xs text-slate-400 flex items-center gap-1">
+                        ⏱ {srv.duration || '30 دقيقة'}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-extrabold text-white group-hover:text-teal-400 transition">
+                      {srv.name}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                      رعاية طبية متكاملة بأحدث أجهزة طب الأسنان مع متابعة دقيقة لملفك الطبي.
+                    </p>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">تكلفة الجلسة</span>
+                      <span className="text-xl font-black text-teal-400">{srv.price} <small className="text-xs">ج.م</small></span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedServiceForBook(srv.name);
+                        setPortalTab('book');
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition cursor-pointer"
+                    >
+                      احجز هذه الخدمة ←
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {portalTab === 'patients' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-3xl p-6">
+              <h3 className="text-base font-extrabold text-white mb-1">➕ فتح ملف مريض جديد</h3>
+              <p className="text-xs text-slate-400 mb-5">
+                يجب تسجيل ملف المريض أولاً قبل حجز موعد له (يمكنك تسجيل نفسك أو أي فرد من عائلتك).
+              </p>
+
+              <form onSubmit={handleAddPatientFromPortal} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-bold">اسم المريض الثلاثي *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: أحمد محمد علي"
+                    value={newPatientForm.name}
+                    onChange={(e) => setNewPatientForm({ ...newPatientForm, name: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-bold">رقم الهاتف *</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="01012345678"
+                    value={newPatientForm.phone}
+                    onChange={(e) => setNewPatientForm({ ...newPatientForm, phone: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-bold">السن</label>
+                    <input
+                      type="number"
+                      placeholder="28"
+                      value={newPatientForm.age}
+                      onChange={(e) => setNewPatientForm({ ...newPatientForm, age: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-bold">النوع</label>
+                    <select
+                      value={newPatientForm.gender}
+                      onChange={(e) => setNewPatientForm({ ...newPatientForm, gender: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+                    >
+                      <option value="ذكر">ذكر</option>
+                      <option value="أنثى">أنثى</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-bold">ملاحظات صحية أو شكوى</label>
+                  <textarea
+                    rows={2}
+                    placeholder="أي حساسية أو أمراض مزمنة..."
+                    value={newPatientForm.notes}
+                    onChange={(e) => setNewPatientForm({ ...newPatientForm, notes: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold transition cursor-pointer"
+                >
+                  حفظ ملف المريض والانتقال للحجز
+                </button>
+              </form>
+            </div>
+
+            <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6">
+              <h3 className="text-base font-extrabold text-white mb-4">👥 ملفات المرضى المسجلة لديك</h3>
+              {myRegisteredPatients.length === 0 ? (
+                <div className="text-center py-12 bg-slate-950/60 rounded-2xl border border-slate-800/80">
+                  <p className="text-sm text-slate-400">لم تقم بتسجيل أي ملف مريض بعد.</p>
+                  <p className="text-xs text-slate-500 mt-1">سجّل ملف المريض من النموذج الجانبي لتتمكن من الحجز له.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {myRegisteredPatients.map((pat: any) => {
+                    const hasActive = hasActiveUncompletedBooking(pat.name);
+                    return (
+                      <div key={pat.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-extrabold text-sm text-white">{pat.name}</span>
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              hasActive ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
+                            }`}>
+                              {hasActive ? 'لديه حجز قيد الانتظار' : 'متاح لحجز موعد'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-2">📱 الهاتف: {pat.phone} | السن: {pat.age || '-'}</p>
+                          {pat.notes && <p className="text-[11px] text-slate-500 mt-1">📝 {pat.notes}</p>}
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setSelectedPatientForBook(pat.name);
+                            setPortalTab('book');
+                          }}
+                          disabled={hasActive}
+                          className={`mt-4 w-full py-2.5 rounded-xl text-xs font-bold transition ${
+                            hasActive
+                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                              : 'bg-teal-500/20 text-teal-300 hover:bg-teal-500 hover:text-slate-950 cursor-pointer'
+                          }`}
+                        >
+                          {hasActive ? '⏳ لا يمكن الحجز قبل إتمام الزيارة الحالية' : '📅 حجز موعد لهذا المريض'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {portalTab === 'book' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-800">
+              <div>
+                <h2 className="text-xl font-extrabold text-white">🕒 حجز موعد من جدول العيادة المباشر</h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  ملاحظة: كل مريض يحق له حجز موعد واحد فقط حتى يحضر العيادة ويسجل الطبيب زيارته في قسم المتابعة.
+                </p>
+              </div>
+              <button
+                onClick={() => setPortalTab('patients')}
+                className="px-4 py-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs font-bold hover:bg-teal-500/20"
+              >
+                + تسجيل مريض جديد غير موجود بالقائمة
+              </button>
+            </div>
+
+            <form onSubmit={handleBookFromPortal} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 mb-2 font-bold">1. اختر اسم المريض المسجل *</label>
+                  <select
+                    required
+                    value={selectedPatientForBook}
+                    onChange={(e) => setSelectedPatientForBook(e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold"
+                  >
+                    <option value="">-- اختر مريضاً من ملفاتك --</option>
+                    {myRegisteredPatients.map((p: any) => {
+                      const locked = hasActiveUncompletedBooking(p.name);
+                      return (
+                        <option key={p.id} value={p.name}>
+                          {p.name} {locked ? '(لديه موعد نشط - ينتظر الكشف)' : '(متاح للحجز ✅)'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-2 font-bold">2. اختر الخدمة الطبية *</label>
+                  <select
+                    required
+                    value={selectedServiceForBook}
+                    onChange={(e) => setSelectedServiceForBook(e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold"
+                  >
+                    <option value="">-- اختر الخدمة --</option>
+                    {services.map((s: any) => (
+                      <option key={s.id} value={s.name}>
+                        {s.name} ({s.price} ج.م)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-2 font-bold">3. اختر تاريخ اليوم لعرض الجدول *</label>
+                  <input
+                    type="date"
+                    required
+                    min={new Date().toISOString().split('T')[0]}
+                    value={selectedDateForBook}
+                    onChange={(e) => {
+                      setSelectedDateForBook(e.target.value);
+                      setSelectedTimeSlot('');
+                    }}
+                    className="w-full px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold"
+                  />
+                </div>
+              </div>
+
+              {selectedPatientForBook && hasActiveUncompletedBooking(selectedPatientForBook) && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold">
+                  ⚠️ تنبيه: المريض ({selectedPatientForBook}) لديه حجز قادم لم يتم الكشف عليه بعد في سجل زيارات الطبيب! لا يمكن حجز موعد ثانٍ له إلا بعد إتمام زيارته الحالية، أو يمكنك اختيار/تسجيل مريض آخر.
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-xs font-bold text-slate-300">
+                    4. جدول مواعيد يوم ({selectedDateForBook}) - اختر التوقيت المتاح:
+                  </label>
+                  <div className="flex items-center gap-4 text-[11px]">
+                    <span className="flex items-center gap-1.5 text-emerald-400">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> متاح للحجز
+                    </span>
+                    <span className="flex items-center gap-1.5 text-rose-400">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> محجوز (غير متاح)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                  {CLINIC_TIME_SLOTS.map((slot) => {
+                    const bookedApt = appointments.find(
+                      (apt: any) =>
+                        apt.date === selectedDateForBook &&
+                        apt.time === slot &&
+                        apt.status !== 'ملغي'
+                    );
+                    const isBooked = Boolean(bookedApt);
+                    const isSelected = selectedTimeSlot === slot;
+
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        disabled={isBooked}
+                        onClick={() => setSelectedTimeSlot(slot)}
+                        className={`py-3 px-3 rounded-xl text-xs font-bold border transition flex flex-col items-center justify-center gap-1 ${
+                          isBooked
+                            ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 opacity-60 cursor-not-allowed'
+                            : isSelected
+                            ? 'bg-teal-500 border-teal-400 text-slate-950 shadow-lg shadow-teal-500/30 scale-105 cursor-pointer'
+                            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 cursor-pointer'
+                        }`}
+                      >
+                        <span>{slot}</span>
+                        <span className="text-[10px] font-normal">
+                          {isBooked ? '❌ غير متاح' : isSelected ? '✓ تم الاختيار' : '🟢 متاح'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!selectedPatientForBook || hasActiveUncompletedBooking(selectedPatientForBook)}
+                className="w-full py-4 rounded-2xl bg-teal-500 hover:bg-teal-400 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-extrabold text-sm transition cursor-pointer"
+              >
+                تأكيد حجز الموعد في الجدول
+              </button>
+            </form>
+          </div>
+        )}
+
+        {portalTab === 'appointments' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+            <h2 className="text-lg font-extrabold text-white mb-4">📋 سجل حجوزاتك وحالة الكشف والزيارات</h2>
+            {myAppointments.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-10 bg-slate-950 rounded-2xl">
+                لا توجد حجوزات مسجلة حتى الآن.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {myAppointments.map((apt: any) => {
+                  const visited = isAppointmentCompletedInVisits(apt);
+                  return (
+                    <div
+                      key={apt.id}
+                      className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-base text-white">المريض: {apt.patientName}</span>
+                          <span className="text-xs text-teal-400 font-bold">({apt.service})</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">
+                          📅 التاريخ: {apt.date} | 🕒 الساعة: {apt.time} | 👨‍⚕️ {apt.doctor || 'د. طارق السعيد'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        {visited ? (
+                          <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            ✅ حضر العيادة وتم تسجيل الزيارة (يمكنه الحجز مجدداً)
+                          </span>
+                        ) : (
+                          <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            ⏳ حجز نشط ({apt.status || 'بانتظار حضور المريض للكشف'})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+///////////////////////////////////////////////////////
+
+
+
+
   return (
     <div
       dir="rtl"
@@ -1002,6 +2288,20 @@ export default function App() {
               <Stethoscope className="w-6 h-6" />
             </div>
           </div>
+
+
+
+          <button
+            onClick={handleLogout}
+            className="w-full mb-4 py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-2 border border-rose-200 transition cursor-pointer"
+          >
+            🚪 تسجيل الخروج من الحساب
+          </button>
+
+
+
+
+
 
           <div className="text-xs font-bold text-slate-400 px-2 mb-3">
             القائمة الرئيسية
@@ -1995,7 +3295,7 @@ export default function App() {
             <form onSubmit={handleSavePatient} className="space-y-4 text-xs">
               <div>
                 <label className="block font-bold text-slate-600 mb-1.5">
-                  اسم المريض بالكامل
+                  اسم
                 </label>
                 <input
                   name="name"
