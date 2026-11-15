@@ -1211,9 +1211,14 @@ setFullSignupData(signupPayload);
     );
   }, [patients, patientSearch]);
 
+ // const filteredAppointments = useMemo(() => {
+    //if (appointmentFilter === 'الكل') return appointments;
+   // return appointments.filter((a) => a.status === appointmentFilter);
+  //}, [appointments, appointmentFilter]);
   const filteredAppointments = useMemo(() => {
-    if (appointmentFilter === 'الكل') return appointments;
-    return appointments.filter((a) => a.status === appointmentFilter);
+    const activeAppointments = appointments.filter((a: any) => a.status !== 'مكتمل');
+    if (appointmentFilter === 'الكل') return activeAppointments;
+    return activeAppointments.filter((a: any) => a.status === appointmentFilter);
   }, [appointments, appointmentFilter]);
 
   const dashboardStats = useMemo(() => {
@@ -1497,9 +1502,7 @@ if (currentUser.role === 'patient') {
     return appointments.some(
       (apt: any) =>
         apt.patientName?.trim().toLowerCase() === patientName.trim().toLowerCase() &&
-        apt.status !== 'ملغي' &&
-        apt.status !== 'Cancelled' &&
-        !isAppointmentCompletedInVisits(apt)
+        (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد')
     );
   };
 
@@ -1515,7 +1518,9 @@ const myRegisteredPatients = [
   ...patients.filter(
     (p: any) =>
       (String(p.phone).trim() === String(currentUser.phone).trim() ||
-        String(p.createdByAccount).trim().toLowerCase() === String(currentUser.email).trim().toLowerCase()) &&
+       // String(p.createdByAccount).trim().toLowerCase() === String(currentUser.email).trim().toLowerCase()) &&
+       String(p.createdByAccount).trim().toLowerCase() === String(currentUser.email).trim().toLowerCase() ||
+String(p.notes).toLowerCase().includes(String(currentUser.email).trim().toLowerCase())) &&
       !savedPortalPatients.some((sp: any) => sp.id === p.id || sp.name === p.name)
   ),
 ];
@@ -1744,7 +1749,8 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                 🚪 تسجيل الخروج
               </button>
             </div>
-            <FloatingChat patientId={currentUser ? currentUser.id : "test-user"} />
+            <FloatingChat patientId={currentUser ? (currentUser.email || currentUser.phone) : "test-user"} />
+
           </div>
 
           <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-slate-800/80">
@@ -1931,16 +1937,26 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {myRegisteredPatients.map((pat: any) => {
-                    const hasActive = hasActiveUncompletedBooking(pat.name);
+
+//const activeBooking = appointments.find(apt => 
+ // apt.patientName?.trim().toLowerCase() === pat.name.trim().toLowerCase() && 
+ // (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد')
+//);
+
+                   // const hasActive = hasActiveUncompletedBooking(pat.name);
+                   const activeBooking = appointments.find((apt: any) => apt.patientName?.trim().toLowerCase() === pat.name.trim().toLowerCase() && (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد'));
+                   const hasActive = activeBooking ? true : false;
                     return (
                       <div key={pat.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between">
                             <span className="font-extrabold text-sm text-white">{pat.name}</span>
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                              hasActive ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
+                             // hasActive ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
+                             hasActive ? (activeBooking?.status === 'مؤكد' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300') : 'bg-slate-800 text-slate-400'
                             }`}>
-                              {hasActive ? 'لديه حجز قيد الانتظار' : 'متاح لحجز موعد'}
+                              {hasActive ? (activeBooking?.status === 'مؤكد' ? 'حجز مؤكد ✅' : 'لديه حجز قيد الانتظار') : 'متاح لحجز موعد'}
+
                             </span>
                           </div>
                           <p className="text-xs text-slate-400 mt-2">📱 الهاتف: {pat.phone} | السن: {pat.age || '-'}</p>
@@ -2065,13 +2081,20 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 p-4 rounded-2xl bg-slate-950 border border-slate-800">
                   {CLINIC_TIME_SLOTS.map((slot) => {
-                    const bookedApt = appointments.find(
-                      (apt: any) =>
-                        apt.date === selectedDateForBook &&
-                        apt.time === slot &&
-                        apt.status !== 'ملغي'
-                    );
-                    const isBooked = Boolean(bookedApt);
+                    //const bookedApt = appointments.find(
+                     // (apt: any) =>
+                      //  apt.date === selectedDateForBook &&
+                     //   apt.time === slot &&
+                    //   apt.status !== 'ملغي'
+                   // );
+                  //  const isBooked = Boolean(bookedApt);
+                  const bookedApt = appointments.find((apt: any) => 
+  apt.date === selectedDateForBook && 
+  apt.time === slot && 
+  (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد')
+);
+const isBooked = !!bookedApt;
+                    
                     const isSelected = selectedTimeSlot === slot;
 
                     return (
@@ -2140,11 +2163,28 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                           <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                             ✅ حضر العيادة وتم تسجيل الزيارة (يمكنه الحجز مجدداً)
                           </span>
-                        ) : (
-                          <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                            ⏳ حجز نشط ({apt.status || 'بانتظار حضور المريض للكشف'})
-                          </span>
-                        )}
+                       // ) : (
+                         // <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                           // ⏳ حجز نشط ({apt.status || 'بانتظار حضور المريض للكشف'})
+                          //</span>
+                          ) : (() => {
+                            const liveStatus = appointments.find((a: any) => a.id === apt.id || (a.patientName === apt.patientName && a.date === apt.date))?.status || apt.status;
+                            
+                            return (
+                              <span className={`px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-2 w-fit ${
+                                liveStatus === 'مؤكد' ? 'bg-emerald-500/20 text-emerald-400' :
+                                liveStatus === 'مكتمل' ? 'bg-blue-500/20 text-blue-400' :
+                                (liveStatus === 'Cancelled' || liveStatus === 'ملغي' || liveStatus === 'إلغاء') ? 'bg-rose-500/20 text-rose-400' :
+                                'bg-amber-500/20 text-amber-400'
+                              }`}>
+                                {liveStatus === 'مؤكد' ? '✅ حجز مؤكد' :
+                                 liveStatus === 'مكتمل' ? '🏁 كشف مكتمل' :
+                                 (liveStatus === 'Cancelled' || liveStatus === 'ملغي' || liveStatus === 'إلغاء') ? '❌ حجز ملغي' :
+                                 '⏳ قيد الانتظار'}
+                              </span>
+                            );
+                          })()}
+                       
                       </div>
                     </div>
                   );
@@ -2277,7 +2317,7 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                     : 'bg-slate-200/80 text-slate-700'
                 }`}
               >
-                {appointments.length}
+                {appointments.filter((a: any) => a.status !== 'مكتمل').length}
               </span>
               <div className="flex items-center gap-3">
                 <span>حجز المواعيد</span>
@@ -2997,7 +3037,7 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                           </span>
                         </div>
                         <span className="px-3.5 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-[#147a60] border border-emerald-200">
-                          تم تحصيل: {v.paidAmount} ر.س
+                          تم تحصيل: {v.paidAmount} ج.م
                         </span>
                       </div>
 
