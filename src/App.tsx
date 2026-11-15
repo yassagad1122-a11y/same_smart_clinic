@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import emailjs from '@emailjs/browser';
+import FloatingChat from './FloatingChat';
 import {
   LayoutGrid,
   Users,
@@ -1743,6 +1744,7 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                 🚪 تسجيل الخروج
               </button>
             </div>
+            <FloatingChat patientId={currentUser ? currentUser.id : "test-user"} />
           </div>
 
           <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-slate-800/80">
@@ -3668,6 +3670,7 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
               </div>
             </form>
           </div>
+              
         </div>
       )}
     </div>
