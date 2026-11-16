@@ -1515,15 +1515,21 @@ const storagePatientsKey = `clinic_my_patients_${currentUser.email || currentUse
 const savedPortalPatients = JSON.parse(localStorage.getItem(storagePatientsKey) || '[]');
 const myRegisteredPatients = [
   ...savedPortalPatients,
-  ...patients.filter(
-    (p: any) =>
-      (String(p.phone).trim() === String(currentUser.phone).trim() ||
-       // String(p.createdByAccount).trim().toLowerCase() === String(currentUser.email).trim().toLowerCase()) &&
-       String(p.createdByAccount).trim().toLowerCase() === String(currentUser.email).trim().toLowerCase() ||
-String(p.notes).toLowerCase().includes(String(currentUser.email).trim().toLowerCase())) &&
-      !savedPortalPatients.some((sp: any) => sp.id === p.id || sp.name === p.name)
-  ),
-];
+  ...patients.filter((p: any) => {
+    // 1. تأمين الإيميل ورقم التليفون عشان لو العميل مسجل بواحد فيهم بس الكود ميضربش
+    const userEmail = currentUser?.email ? String(currentUser.email).trim().toLowerCase() : null;
+    const userPhone = currentUser?.phone ? String(currentUser.phone).trim() : null;
+
+    // 2. مطابقة بيانات MockAPI مع العميل الحالي
+    const matchEmail = userEmail ? (String(p.createdByAccount).trim().toLowerCase() === userEmail || String(p.notes).toLowerCase().includes(userEmail)) : false;
+    const matchPhone = userPhone ? String(p.phone).trim() === userPhone : false;
+
+    // 3. لغينا فحص الـ (id) عشان نمنع تصادم MockAPI مع الـ LocalStorage واعتمدنا على الاسم
+    const isDuplicate = savedPortalPatients.some((sp: any) => sp.name === p.name);
+
+    return (matchEmail || matchPhone) && !isDuplicate;
+  })
+].reverse();
 
 const myPatientNames = new Set([
   currentUser.name?.trim().toLowerCase(),
@@ -1535,14 +1541,28 @@ const storageAptsKey = `clinic_my_apts_${currentUser.email || currentUser.phone}
 const savedPortalApts = JSON.parse(localStorage.getItem(storageAptsKey) || '[]');
 const myAppointments = [
   ...savedPortalApts,
-  ...appointments.filter(
-    (apt: any) =>
-      (String(apt.phone).trim() === String(currentUser.phone).trim() ||
-        myPatientNames.has(apt.patientName?.trim().toLowerCase())) &&
-      !savedPortalApts.some((sa: any) => sa.id === apt.id)
-  ),
-];
+  ...appointments.filter((apt: any) => {
+    // 1. تأمين بيانات العميل الحالي
+    const userEmail = currentUser?.email ? String(currentUser.email).trim().toLowerCase() : null;
+    const userPhone = currentUser?.phone ? String(currentUser.phone).trim() : null;
 
+    // 2. مطابقة الموعد مع العميل (بالإيميل في خانتين، أو برقم التليفون)
+    const matchEmail = userEmail ? (
+      String(apt.createdByAccount).trim().toLowerCase() === userEmail ||
+      String(apt.notes).toLowerCase().includes(userEmail)
+    ) : false;
+    
+    const matchPhone = userPhone ? String(apt.phone).trim() === userPhone : false;
+
+    // 3. الاحتفاظ بالفلتر القديم (عشان لو الموعد متسجل باسم مريض من عيلة العميل)
+    const matchName = myPatientNames.has(apt.patientName?.trim().toLowerCase());
+
+    // 4. منع التكرار
+    const isDuplicate = savedPortalApts.some((sa: any) => sa.id === apt.id);
+
+    return (matchEmail || matchPhone || matchName) && !isDuplicate;
+  })
+].reverse(); // الـ reverse هنا عشان الموعد الجديد يظهر أول واحد فوق
 
 
 
