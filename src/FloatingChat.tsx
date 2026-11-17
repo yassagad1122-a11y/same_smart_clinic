@@ -27,7 +27,7 @@ const FloatingChat: React.FC<FloatingChatProps> = ({ patientId }) => {
 
     try {
       // ⚠️ حط لينك الـ n8n بتاعك هنا ⚠️
-      const response = await fetch('https://thunder-bestsellers-pts-coating.trycloudflare.com/webhook/clinic-chat', {
+      const response = await fetch('https://terminals-handbags-counsel-fellow.trycloudflare.com/webhook/clinic-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
