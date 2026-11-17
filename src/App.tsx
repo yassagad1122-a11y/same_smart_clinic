@@ -1119,10 +1119,35 @@ setFullSignupData(signupPayload);
     setVisitModal({ open: false, editing: null });
   };
 
-  const handleDeleteVisit = (id) => {
-    setVisits((prev) => prev.filter((v) => String(v.id) !== String(id)));
-    showNotification('تم حذف سجل الزيارة.');
-  };
+ // const handleDeleteVisit = (id) => {
+   // setVisits((prev) => prev.filter((v) => String(v.id) !== String(id)));
+  //  showNotification('تم حذف سجل الزيارة.');
+ // };
+
+ const handleDeleteVisit = async (id: any) => {
+  // 1. تنظيف الـ ID: استخراج الرقم الصافي فقط (عشان MockAPI يفهمه)
+  const cleanId = String(id).replace(/\D/g, ''); 
+
+  // 2. مسح الزيارة من الشاشة ومن LocalStorage فوراً عشان مترجعش مع الـ Reload
+  setVisits((prev: any) => {
+    const updatedVisits = prev.filter((v: any) => String(v.id) !== String(id));
+    localStorage.setItem(STORAGE_KEYS.VISITS, JSON.stringify(updatedVisits));
+    return updatedVisits;
+  });
+
+  // 3. إرسال أمر الحذف للـ API بالرقم الصافي 
+  try {
+    if (cleanId) {
+      await fetch(`https://6ae4c8f828393034b08df0d3.mockapi.io/appointments/${cleanId}`, {
+        method: 'DELETE',
+      });
+    }
+    showNotification('تم حذف سجل الزيارة نهائياً بنجاح');
+  } catch (error) {
+    console.error('Error deleting from API:', error);
+  }
+};
+
 
   const handleSaveService = async (e) => {
     e.preventDefault();
