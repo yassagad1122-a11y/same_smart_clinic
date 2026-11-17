@@ -938,16 +938,60 @@ setFullSignupData(signupPayload);
     }
   };
 
-  const handleDeletePatient = async (id) => {
+ // const handleDeletePatient = async (id) => {
+   // const strId = String(id);
+   // setPatients((prev) => prev.filter((p) => String(p.id) !== strId));
+   // try {
+    //  await fetch(`${API_ENDPOINTS.PATIENTS}/${strId}`, { method: 'DELETE' });
+    //  showNotification('تم حذف ملف المريض نهائياً من التطبيق ومن MockAPI!');
+   // } catch {
+    //  showNotification('تم حذف المريض.', 'info');
+   // }
+  //};
+
+  const handleDeletePatient = async (id: any) => {
     const strId = String(id);
-    setPatients((prev) => prev.filter((p) => String(p.id) !== strId));
+    
+    // 1. البحث عن المريض بالـ ID لمعرفة رقم تليفونه
+    const patientToDelete = patients.find((p: any) => String(p.id) === strId);
+    if (!patientToDelete) return; 
+  
+    // 2. مسح المريض من الشاشة فوراً
+    setPatients((prev: any) => prev.filter((p: any) => String(p.id) !== strId));
+  
     try {
+      // 3. مسح المريض من الـ API
       await fetch(`${API_ENDPOINTS.PATIENTS}/${strId}`, { method: 'DELETE' });
-      showNotification('تم حذف ملف المريض نهائياً من التطبيق ومن MockAPI!');
-    } catch {
-      showNotification('تم حذف المريض.', 'info');
+  
+      // 4. الحذف المتسلسل للمواعيد: (البحث برقم التليفون فقط)
+      const aptsToDelete = appointments.filter(
+        (apt: any) => apt.phone === patientToDelete.phone
+      );
+  
+      // مسح مواعيده من الشاشة (باستثناء اللي تليفونهم مش مطابق)
+      setAppointments((prev: any) => 
+        prev.filter((apt: any) => apt.phone !== patientToDelete.phone)
+      );
+  
+      // مسح مواعيده من الـ API
+      for (const apt of aptsToDelete) {
+         const cleanAptId = String(apt.id).replace(/\D/g, ''); 
+         if (cleanAptId) {
+           await fetch(`https://6ae4c8f828393034b08df0d3.mockapi.io/appointments/${cleanAptId}`, {
+             method: 'DELETE',
+           });
+         }
+      }
+      
+      showNotification('تم الحذف بنجاح!');
+    } catch (error) {
+      console.error(error);
+      showNotification('حدث خطأ أثناء الاتصال بقاعدة البيانات');
     }
   };
+
+
+
 
   // ============================================================================
   // 6. إدارة المواعيد (إضافة / تعديل / تغيير حالة / حذف مباشر في MockAPI)
