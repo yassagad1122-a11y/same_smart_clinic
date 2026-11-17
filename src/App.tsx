@@ -2035,39 +2035,175 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                    // const hasActive = hasActiveUncompletedBooking(pat.name);
                    const activeBooking = appointments.find((apt: any) => apt.patientName?.trim().toLowerCase() === pat.name.trim().toLowerCase() && (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد'));
                    const hasActive = activeBooking ? true : false;
-                    return (
-                      <div key={pat.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <span className="font-extrabold text-sm text-white">{pat.name}</span>
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                             // hasActive ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
-                             hasActive ? (activeBooking?.status === 'مؤكد' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300') : 'bg-slate-800 text-slate-400'
-                            }`}>
-                              {hasActive ? (activeBooking?.status === 'مؤكد' ? 'حجز مؤكد ✅' : 'لديه حجز قيد الانتظار') : 'متاح لحجز موعد'}
+                   // return (
+                     // <div key={pat.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+                      //  <div>
+                       //   <div className="flex items-center justify-between">
+                        //    <span className="font-extrabold text-sm text-white">{pat.name}</span>
+                         //   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                          //   // hasActive ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
+                        //     hasActive ? (activeBooking?.status === 'مؤكد' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300') : 'bg-slate-800 text-slate-400'
+                         //   }`}>
+                            //</div>  {hasActive ? (activeBooking?.status === 'مؤكد' ? 'حجز مؤكد ✅' : 'لديه حجز قيد الانتظار') : 'متاح لحجز موعد'}
+//</div>
+  //</div>                          </span>
+    //                      </div>
+      //                    <p className="text-xs text-slate-400 mt-2">📱 الهاتف: {pat.phone} | السن: {pat.age || '-'}</p>
+        //                  {pat.notes && <p className="text-[11px] text-slate-500 mt-1">📝 {pat.notes}</p>}
+          //              </div>
+//
+  //                      <button
+    //                      onClick={() => {
+      ///                      setSelectedPatientForBook(pat.name);
+         //                   setPortalTab('book');
+           //               }}
+             //             disabled={hasActive}
+               //           className={`mt-4 w-full py-2.5 rounded-xl text-xs font-bold transition ${
+                 //           hasActive
+                   //           ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                     //         : 'bg-teal-500/20 text-teal-300 hover:bg-teal-500 hover:text-slate-950 cursor-pointer'
+                       //   }`}
+                       // >
+                        //</div>  {hasActive ? '⏳ لا يمكن الحجز قبل إتمام الزيارة الحالية' : '📅 حجز موعد لهذا المريض'}
+                      //</div>  </button>
+                     // </div>
+                   // );
+                   return (
+                    <div key={pat.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col gap-4">
+                      
+                      {/* متغير عشان نعرف هل الدكتور حذف المريض ده ولا لسه موجود */}
+                      {(() => {
+                        //const isAcceptedByDoctor = patients.some((p: any) => String(p.id) === String(pat.id) || p.phone === pat.phone);
+                        const isAcceptedByDoctor = patients.some((p: any) => {
+                          if (!p.phone || !pat.phone) return false;
+                          
+                          // دالة ذكية لتحويل الأرقام العربية (٠١٢) إلى إنجليزية (012) وحذف أي مسافات
+                          const cleanPhone = (num: any) => 
+                            String(num)
+                              .replace(/[٠-٩]/g, (d: any) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+                              .replace(/\D/g, '');
+                              
+                          return cleanPhone(p.phone) === cleanPhone(pat.phone);
+                        });
+                        return isAcceptedByDoctor ? (
+                          // --- الحالة الأولى: المريض موجود عند الدكتور (طبيعي) ---
+                          <>
+                            <div>
+                              <div className="flex items-center justify-between">
+                                <span className="font-extrabold text-sm text-white">{pat.name}</span>
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                  hasActive ? (activeBooking?.status === 'مؤكد' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300') : 'hidden'
+                                }`}>
+                                  {hasActive ? (activeBooking?.status === 'مؤكد' ? 'حجز مؤكد' : 'لديه حجز قيد الانتظار') : ''}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-400 mt-2">الهاتف: {pat.phone} | السن: {pat.age || '-'}</p>
+                              {pat.notes && <p className="text-[11px] text-slate-500 mt-1">{pat.notes}</p>}
+                            </div>
+                  
+                            <button
+                              onClick={() => {
+                                setSelectedPatientForBook(pat.name);
+                                setPortalTab('book');
+                              }}
+                              disabled={hasActive}
+                              className={`mt-4 w-full py-2.5 rounded-xl text-xs font-bold transition-all ${
+                                hasActive 
+                                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                  : 'bg-teal-500/20 text-teal-300 hover:bg-teal-500 hover:text-slate-950 cursor-pointer'
+                              }`}
+                            >
+                              {hasActive ? 'لا يمكن الحجز قبل إتمام الزيارة الحالية' : 'حجز موعد لهذا المريض'}
+                            </button>
+                          </>
+                        ) : (
+                          // --- الحالة التانية: الدكتور حذف/رفض المريض ---
+                          <div className="text-center py-2">
+                            <div className="mb-3 text-rose-500 flex justify-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-x"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/></svg>
+                            </div>
+                            <h3 className="text-white font-extrabold text-sm mb-1">{pat.name}</h3>
+<p className="text-xs text-slate-400 mb-3">{pat.phone}</p>
+                            <h4 className="text-rose-400 text-sm font-bold mb-1">تم رفض أو حذف ملف المريض</h4>
+                            <p className="text-[11px] text-slate-500 mb-4">قامت العيادة بإلغاء تسجيل هذا المريض.</p>
+                            
+                            <div className="flex gap-2">
+                            <button
+              onClick={(e) => {
+                // دالة توحيد الأرقام
+                const clean = (num: any) => String(num || '').replace(/[٠-٩]/g, (d: any) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '');
+                const targetPhone = clean(pat.phone);
 
-                            </span>
+                // 1. البحث في كل مفاتيح localStorage أوتوماتيك ومسح المريض منها مهما كان اسم المفتاح
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i);
+                  if (!key) continue;
+                  try {
+                    const data = JSON.parse(localStorage.getItem(key) || 'null');
+                    if (Array.isArray(data)) {
+                      const filtered = data.filter((item: any) => {
+                        if (!item || typeof item !== 'object') return true;
+                        const isSamePhone = item.phone && clean(item.phone) === targetPhone;
+                        const isSameName = item.name && item.name === pat.name;
+                        return !(isSamePhone || isSameName);
+                      });
+                      // لو لقى المريض ومسحه، يحفظ القائمة النظيفة في نفس المفتاح
+                      if (filtered.length !== data.length) {
+                        localStorage.setItem(key, JSON.stringify(filtered));
+                      }
+                    }
+                  } catch {
+                    // تجاهل أي مفتاح مش JSON
+                  }
+                }
+
+                // 2. إخفاء الكارت من الشاشة فوراً بنعومة بدون ريفرش
+                const card = e.currentTarget.closest('.p-5') as HTMLElement;
+                if (card) card.style.display = 'none';
+              }}
+              className="flex-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 py-2 rounded-lg text-[11px] font-bold transition-colors"
+            >
+              حذف السجل
+            </button>
+                              <button
+              onClick={async () => {
+                try {
+                  // 1. تجهيز البيانات 
+                  const { id, ...patientData } = pat;
+
+                  // 2. إرسال البيانات فوراً لـ MockAPI
+                  const response = await fetch(API_ENDPOINTS.PATIENTS, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      ...patientData,
+                      notes: pat.notes || 'تم إعادة التسجيل من بوابة المريض',
+                      createdAt: new Date().toISOString().split('T')[0]
+                    })
+                  });
+
+                  if (response.ok) {
+                    // 3. التحديث السحري اللحظي (بدون ريفرش)
+                    const newPatient = await response.json(); // بناخد المريض الجديد بالـ ID بتاعه
+                    setPatients((prev: any) => [...prev, newPatient]); // بنضيفه في الـ State فوراً
+                  } else {
+                    alert('حدث خطأ أثناء إرسال البيانات للعيادة');
+                  }
+                } catch (error) {
+                  alert('حدث خطأ، تأكد من اتصالك بالإنترنت');
+                }
+              }}
+              className="flex-1 bg-slate-800 text-slate-300 hover:bg-slate-700 py-2 rounded-lg text-[11px] font-bold transition-colors"
+            >
+              إعادة تسجيل
+            </button>
+                            </div>
                           </div>
-                          <p className="text-xs text-slate-400 mt-2">📱 الهاتف: {pat.phone} | السن: {pat.age || '-'}</p>
-                          {pat.notes && <p className="text-[11px] text-slate-500 mt-1">📝 {pat.notes}</p>}
-                        </div>
+                        );
+                      })()}
+                    </div>
+                  );
 
-                        <button
-                          onClick={() => {
-                            setSelectedPatientForBook(pat.name);
-                            setPortalTab('book');
-                          }}
-                          disabled={hasActive}
-                          className={`mt-4 w-full py-2.5 rounded-xl text-xs font-bold transition ${
-                            hasActive
-                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                              : 'bg-teal-500/20 text-teal-300 hover:bg-teal-500 hover:text-slate-950 cursor-pointer'
-                          }`}
-                        >
-                          {hasActive ? '⏳ لا يمكن الحجز قبل إتمام الزيارة الحالية' : '📅 حجز موعد لهذا المريض'}
-                        </button>
-                      </div>
-                    );
                   })}
                 </div>
               )}
