@@ -2025,7 +2025,7 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {myRegisteredPatients.map((pat: any) => {
+                  {myRegisteredPatients.map((pat: any , idx: number) => {
 
 //const activeBooking = appointments.find(apt => 
  // apt.patientName?.trim().toLowerCase() === pat.name.trim().toLowerCase() && 
@@ -2069,7 +2069,7 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                      // </div>
                    // );
                    return (
-                    <div key={pat.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col gap-4">
+                    <div key={`${pat.id}-${idx}`} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col gap-4">
                       
                       {/* متغير عشان نعرف هل الدكتور حذف المريض ده ولا لسه موجود */}
                       {(() => {
@@ -2129,37 +2129,48 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                             
                             <div className="flex gap-2">
                             <button
-              onClick={(e) => {
-                // دالة توحيد الأرقام
-                const clean = (num: any) => String(num || '').replace(/[٠-٩]/g, (d: any) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '');
-                const targetPhone = clean(pat.phone);
-
-                // 1. البحث في كل مفاتيح localStorage أوتوماتيك ومسح المريض منها مهما كان اسم المفتاح
-                for (let i = 0; i < localStorage.length; i++) {
-                  const key = localStorage.key(i);
-                  if (!key) continue;
-                  try {
-                    const data = JSON.parse(localStorage.getItem(key) || 'null');
-                    if (Array.isArray(data)) {
-                      const filtered = data.filter((item: any) => {
-                        if (!item || typeof item !== 'object') return true;
-                        const isSamePhone = item.phone && clean(item.phone) === targetPhone;
-                        const isSameName = item.name && item.name === pat.name;
-                        return !(isSamePhone || isSameName);
-                      });
-                      // لو لقى المريض ومسحه، يحفظ القائمة النظيفة في نفس المفتاح
-                      if (filtered.length !== data.length) {
-                        localStorage.setItem(key, JSON.stringify(filtered));
-                      }
-                    }
-                  } catch {
-                    // تجاهل أي مفتاح مش JSON
-                  }
-                }
-
-                // 2. إخفاء الكارت من الشاشة فوراً بنعومة بدون ريفرش
+              onClick={async (e) => {
+                // 1. إخفاء الكارت من الشاشة فوراً بنعومة
                 const card = e.currentTarget.closest('.p-5') as HTMLElement;
                 if (card) card.style.display = 'none';
+
+                // دالة توحيد الأرقام (عربي لإنجليزي)
+                const clean = (num: any) =>
+                  String(num || '')
+                    .replace(/[٠-٩]/g, (d: any) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+                    .replace(/\D/g, '');
+                const targetPhone = clean(pat.phone);
+
+                // 2. مسح المريض من localStorage بتاع الحساب الحالي
+                const storageKey = `clinic_my_patients_${currentUser?.email || currentUser?.phone}`;
+                const savedList = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                const updatedList = savedList.filter((item: any) => {
+                  const isSamePhone = item.phone && clean(item.phone) === targetPhone;
+                  const isSameName = item.name && item.name === pat.name;
+                  return !(isSamePhone || isSameName);
+                });
+                localStorage.setItem(storageKey, JSON.stringify(updatedList));
+
+                // 3. مسح المريض من Supabase نهائياً
+                if (SUPABASE_URL && SUPABASE_KEY && currentUser?.email) {
+                  try {
+                    const userEmail = currentUser.email.trim().toLowerCase();
+                    await fetch(
+                      `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(userEmail)}`,
+                      {
+                        method: 'PATCH',
+                        headers: {
+                          apikey: SUPABASE_KEY,
+                          Authorization: `Bearer ${SUPABASE_KEY}`,
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ my_patients: updatedList }),
+                      }
+                    );
+                  } catch (err) {
+                    console.error('Supabase Delete Error:', err);
+                  }
+                }
               }}
               className="flex-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 py-2 rounded-lg text-[11px] font-bold transition-colors"
             >
@@ -2239,10 +2250,10 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                     className="w-full px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold"
                   >
                     <option value="">-- اختر مريضاً من ملفاتك --</option>
-                    {myRegisteredPatients.map((p: any) => {
+                    {myRegisteredPatients.map((p: any , idx: number) => {
                       const locked = hasActiveUncompletedBooking(p.name);
                       return (
-                        <option key={p.id} value={p.name}>
+                        <option key={`${p.id}-${idx}`} value={p.name}>
                           {p.name} {locked ? '(لديه موعد نشط - ينتظر الكشف)' : '(متاح للحجز ✅)'}
                         </option>
                       );
@@ -2367,7 +2378,18 @@ const isBooked = !!bookedApt;
             ) : (
               <div className="space-y-3">
                 {myAppointments.map((apt: any) => {
-                  const visited = isAppointmentCompletedInVisits(apt);
+                 // const visited = isAppointmentCompletedInVisits(apt);
+                 const aptKey = `${apt.patientName}-${apt.date}-${apt.time}`;
+const completedHistory = JSON.parse(localStorage.getItem('clinic_completed_apts') || '[]');
+const isVisitedNow = isAppointmentCompletedInVisits(apt) || apt.status === 'مكتمل';
+
+if (isVisitedNow && !completedHistory.includes(aptKey)) {
+  completedHistory.push(aptKey);
+  localStorage.setItem('clinic_completed_apts', JSON.stringify(completedHistory));
+}
+
+const visited = isVisitedNow || completedHistory.includes(aptKey);
+
                   return (
                     <div
                       key={apt.id}
