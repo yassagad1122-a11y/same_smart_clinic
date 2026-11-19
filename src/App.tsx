@@ -2620,7 +2620,7 @@ const visited = isVisitedNow || completedHistory.includes(aptKey);
 
             <button
               onClick={() => setActiveTab('n8n')}
-              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all border ${
+              className={`w-full hidden items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all border ${
                 activeTab === 'n8n'
                   ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
                   : 'bg-[#eef1f6] text-slate-800 border-slate-200 hover:bg-slate-200/70'
@@ -2645,7 +2645,7 @@ const visited = isVisitedNow || completedHistory.includes(aptKey);
         </div>
 
         {/* الكارت السفلي الداكن في القائمة الجانبية */}
-        <div className="mt-6 bg-[#0d2420] text-white p-4 rounded-2xl shadow-lg border border-teal-900/40">
+        <div className="hidden mt-6 bg-[#0d2420] text-white p-4 rounded-2xl shadow-lg border border-teal-900/40">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full font-bold">
               نشط
@@ -2674,19 +2674,19 @@ const visited = isVisitedNow || completedHistory.includes(aptKey);
               <h2 className="text-2xl font-black text-slate-800">
                 {currentBannerInfo.title}
               </h2>
-              <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-[#147a60] border border-emerald-200">
+              <span className="hidden items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-[#147a60] border border-emerald-200">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span>{currentBannerInfo.badge}</span>
               </span>
             </div>
 
-            <div className="text-xs text-slate-500 font-medium mb-1.5">
+            <div className="hidden text-xs text-slate-500 font-medium mb-1.5">
               مربوط فعلياً عبر HTTP Request بالرابط:
             </div>
             <div
               onClick={() => handleCopy(currentBannerInfo.url)}
               title="اضغط لنسخ الرابط"
-              className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 cursor-pointer px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 font-mono text-xs transition-all"
+              className="hidden items-center gap-2 bg-white hover:bg-slate-50 cursor-pointer px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 font-mono text-xs transition-all"
             >
               <span dir="ltr">{currentBannerInfo.url}</span>
               {copiedText === currentBannerInfo.url ? (
@@ -2702,7 +2702,7 @@ const visited = isVisitedNow || completedHistory.includes(aptKey);
             <button
               onClick={() => syncAllFromAPI(true)}
               disabled={isSyncing}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#168a5c] hover:bg-[#12704a] text-white text-xs font-extrabold shadow-sm transition-all disabled:opacity-60"
+              className="w-full hidden items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#168a5c] hover:bg-[#12704a] text-white text-xs font-extrabold shadow-sm transition-all disabled:opacity-60"
             >
               <span>{currentBannerInfo.syncBtnText}</span>
               <RefreshCw
@@ -2713,7 +2713,7 @@ const visited = isVisitedNow || completedHistory.includes(aptKey);
             <button
               onClick={handlePushServicesToAPI}
               disabled={isPushingServices}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#2557d6] hover:bg-[#1d46b0] text-white text-xs font-extrabold shadow-sm transition-all disabled:opacity-60"
+              className="w-full hidden items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#2557d6] hover:bg-[#1d46b0] text-white text-xs font-extrabold shadow-sm transition-all disabled:opacity-60"
             >
               <span>إرسال الخدمات للـ API الآن</span>
               <RefreshCw
