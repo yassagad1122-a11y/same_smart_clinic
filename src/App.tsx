@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import emailjs from '@emailjs/browser';
 import FloatingChat from './FloatingChat';
+import { sendFeedbackWebhook } from './Feedback';
 import {
   LayoutGrid,
   Users,
@@ -1106,6 +1107,7 @@ setFullSignupData(signupPayload);
           ...prev,
         ];
       });
+      sendFeedbackWebhook(app);
     }
 
     try {
