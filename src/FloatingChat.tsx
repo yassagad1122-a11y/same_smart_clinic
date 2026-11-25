@@ -6,8 +6,11 @@ interface FloatingChatProps {
 
 const FloatingChat: React.FC<FloatingChatProps> = ({ patientId }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{sender: string, text: string}[]>([
-    { sender: 'bot', text: 'أهلاً بك في العيادة الذكية! كيف يمكنني مساعدتك اليوم؟' }
+  const [messages, setMessages] = useState<{ sender: string; text: string }[]>([
+    {
+      sender: 'bot',
+      text: 'أهلاً بك في العيادة الذكية! كيف يمكنني مساعدتك اليوم؟',
+    },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,26 +24,35 @@ const FloatingChat: React.FC<FloatingChatProps> = ({ patientId }) => {
     if (!input.trim()) return;
 
     const userText = input;
-    setMessages(prev => [...prev, { sender: 'user', text: userText }]);
+    setMessages((prev) => [...prev, { sender: 'user', text: userText }]);
     setInput('');
     setIsLoading(true);
 
     try {
-      // ⚠️ حط لينك الـ n8n بتاعك هنا ⚠️
-      const response = await fetch('https://terminals-handbags-counsel-fellow.trycloudflare.com/webhook/clinic-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userText,
-          sessionId: patientId
-        })
-      });
+      // ⚠️ لينك الـ n8n بتاعك (كما هو بدون تغيير) ⚠️
+      const response = await fetch(
+        'https://terminals-handbags-counsel-fellow.trycloudflare.com/webhook/clinic-chat',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: userText,
+            sessionId: patientId,
+          }),
+        }
+      );
 
       const data = await response.json();
-      setMessages(prev => [...prev, { sender: 'bot', text: data.reply }]);
+      setMessages((prev) => [...prev, { sender: 'bot', text: data.reply }]);
     } catch (error) {
       console.error('Chat Error:', error);
-      setMessages(prev => [...prev, { sender: 'bot', text: 'عذراً، حدث خطأ في الاتصال، يرجى المحاولة لاحقاً.' }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'bot',
+          text: 'عذراً، حدث خطأ في الاتصال، يرجى المحاولة لاحقاً.',
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -48,142 +60,174 @@ const FloatingChat: React.FC<FloatingChatProps> = ({ patientId }) => {
 
   return (
     <>
-      <style>
-        {`
-          @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.8) translateY(20px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
-          }
-          @keyframes slideUp {
-            0% { opacity: 0; transform: translateY(10px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-          .typing-dot {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            background-color: #0284c7;
-            border-radius: 50%;
-            margin: 0 2px;
-            animation: typing 1.4s infinite ease-in-out both;
-          }
-          .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-          .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-          @keyframes typing {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
-          }
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 10px;
-          }
-        `}
-      </style>
+      <style>{`
+        .fc-root { position: fixed; bottom: 20px; right: 20px; z-index: 9999; direction: rtl;
+          font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; }
 
-      {/* خلينا المسافات 20px عشان تناسب الموبايل */}
-      <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 9999, direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-        
+        .fc-panel { width: calc(100vw - 40px); max-width: 380px; height: 540px; max-height: calc(100vh - 110px);
+          background: #f4f8f8; border-radius: 22px; margin-bottom: 14px; overflow: hidden;
+          display: flex; flex-direction: column; border: 1px solid #d3e2e4;
+          box-shadow: 0 30px 70px -20px rgba(7,28,34,.45);
+          transform-origin: bottom right; animation: fc-open .28s cubic-bezier(.2,.8,.2,1) both; }
+        @keyframes fc-open { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+        @keyframes fc-msg { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+        .fc-head { background: linear-gradient(160deg, #0a2a33, #0b4f5c); color: #fff; padding: 14px 18px;
+          display: flex; align-items: center; justify-content: space-between; }
+        .fc-head-info { display: flex; align-items: center; gap: 12px; }
+        .fc-avatar { width: 40px; height: 40px; border-radius: 12px; background: rgba(92,214,196,.16);
+          border: 1px solid rgba(92,214,196,.35); display: grid; place-items: center; color: #5cd6c4; }
+        .fc-title { margin: 0; font-size: 15px; font-weight: 700; }
+        .fc-status { margin: 2px 0 0; font-size: 12px; color: #9fd9d1; display: flex; align-items: center; gap: 6px; }
+        .fc-dot { width: 7px; height: 7px; border-radius: 50%; background: #5cd6c4; }
+        .fc-close { background: rgba(255,255,255,.1); border: 0; color: #fff; width: 30px; height: 30px;
+          border-radius: 10px; cursor: pointer; display: grid; place-items: center; }
+        .fc-close:hover { background: rgba(255,255,255,.2); }
+
+        .fc-body { flex: 1; padding: 16px 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .fc-body::-webkit-scrollbar { width: 6px; }
+        .fc-body::-webkit-scrollbar-thumb { background: #bcd3d6; border-radius: 10px; }
+
+        .fc-row { max-width: 85%; animation: fc-msg .25s ease both; }
+        .fc-row.user { align-self: flex-start; }
+        .fc-row.bot { align-self: flex-end; }
+        .fc-bubble { padding: 11px 15px; font-size: 14px; line-height: 1.7; white-space: pre-wrap; border-radius: 16px; }
+        .fc-row.user .fc-bubble { background: #0c8a7b; color: #fff; border-bottom-right-radius: 4px; }
+        .fc-row.bot .fc-bubble { background: #fff; color: #0a2a33; border: 1px solid #dbe8e9; border-bottom-left-radius: 4px; }
+
+        .fc-typing { display: inline-flex; gap: 4px; align-items: center; }
+        .fc-typing i { width: 6px; height: 6px; border-radius: 50%; background: #0c8a7b; animation: fc-bounce 1.3s infinite ease-in-out both; }
+        .fc-typing i:nth-child(1) { animation-delay: -.3s; }
+        .fc-typing i:nth-child(2) { animation-delay: -.15s; }
+        @keyframes fc-bounce { 0%,80%,100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        .fc-foot { padding: 12px; background: #fff; border-top: 1px solid #e3eeee; display: flex; gap: 8px; align-items: center; }
+        .fc-input { flex: 1; padding: 12px 16px; border-radius: 14px; border: 1px solid #d3e2e4; background: #f4f8f8;
+          color: #0a2a33; font-size: 14px; outline: none; font-family: inherit; }
+        .fc-input:focus { border-color: #0c8a7b; box-shadow: 0 0 0 3px rgba(12,138,123,.15); }
+        .fc-send { width: 44px; height: 44px; border-radius: 14px; border: 0; cursor: pointer; background: #0c8a7b; color: #fff;
+          display: grid; place-items: center; transition: background .15s, opacity .15s; }
+        .fc-send:hover:not(:disabled) { background: #0a6f63; }
+        .fc-send:disabled { opacity: .5; cursor: not-allowed; }
+        .fc-send svg { transform: scaleX(-1); }
+
+        .fc-fab { width: 60px; height: 60px; border-radius: 20px; border: 0; cursor: pointer; color: #fff;
+          background: linear-gradient(160deg, #0c8a7b, #0a4f5c); display: grid; place-items: center;
+          box-shadow: 0 14px 30px -10px rgba(12,138,123,.6); animation: fc-open .35s cubic-bezier(.2,.8,.2,1) both; }
+        .fc-fab:hover { box-shadow: 0 18px 36px -10px rgba(12,138,123,.75); }
+
+        @media (prefers-reduced-motion: reduce) { .fc-panel, .fc-row, .fc-fab { animation: none; } .fc-typing i { animation: none; transform: scale(1); } }
+      `}</style>
+
+      <div className="fc-root">
         {isOpen && (
-          <div style={{ 
-            /* التعديل هنا: العرض والطول بقوا متجاوبين مع الشاشة */
-            width: 'calc(100vw - 40px)', 
-            maxWidth: '380px', 
-            height: '520px', 
-            maxHeight: 'calc(100vh - 100px)', 
-            backgroundColor: '#f8fafc', 
-            borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', 
-            display: 'flex', flexDirection: 'column', marginBottom: '15px', 
-            overflow: 'hidden', border: '1px solid #e2e8f0',
-            animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-            transformOrigin: 'bottom right'
-          }}>
-            
-            <div style={{ 
-              background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', 
-              color: '#fff', padding: '15px 20px', display: 'flex', 
-              justifyContent: 'space-between', alignItems: 'center',
-              boxShadow: '0 2px 10px rgba(2, 132, 199, 0.2)',
-              zIndex: 2
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', backgroundColor: '#fff', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                  🤖
+          <div className="fc-panel" role="dialog" aria-label="المساعد الذكي">
+            <div className="fc-head">
+              <div className="fc-head-info">
+                <div className="fc-avatar">
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="4" y="8" width="16" height="11" rx="3" />
+                    <path d="M12 8V4" />
+                    <circle cx="12" cy="3.5" r="1" />
+                    <path d="M9 13h.01M15 13h.01M9.5 16.2c1.5.8 3.5.8 5 0" />
+                  </svg>
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 'bold' }}>المساعد الذكي</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#e0f2fe', marginTop: '2px' }}>متصل الآن 🟢</p>
+                  <h3 className="fc-title">المساعد الذكي</h3>
+                  <p className="fc-status">
+                    <span className="fc-dot" /> متصل الآن
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: '30px', height: '30px', borderRadius: '50%', fontSize: '14px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'background 0.2s' }}>
-                ✕
+              <button
+                className="fc-close"
+                onClick={() => setIsOpen(false)}
+                aria-label="إغلاق"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            <div className="custom-scrollbar" style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div className="fc-body">
               {messages.map((msg, idx) => (
-                <div key={idx} style={{ 
-                  alignSelf: msg.sender === 'user' ? 'flex-start' : 'flex-end',
-                  animation: 'slideUp 0.3s ease forwards',
-                  maxWidth: '85%'
-                }}>
-                  <div style={{
-                    backgroundColor: msg.sender === 'user' ? '#0ea5e9' : '#ffffff',
-                    color: msg.sender === 'user' ? '#ffffff' : '#1e293b',
-                    padding: '12px 16px',
-                    borderRadius: '16px',
-                    borderBottomRightRadius: msg.sender === 'user' ? '4px' : '16px',
-                    borderBottomLeftRadius: msg.sender === 'bot' ? '4px' : '16px',
-                    boxShadow: msg.sender === 'user' ? '0 4px 10px rgba(14, 165, 233, 0.2)' : '0 4px 10px rgba(0,0,0,0.05)',
-                    border: msg.sender === 'bot' ? '1px solid #e2e8f0' : 'none',
-                    lineHeight: '1.6', fontSize: '14px', whiteSpace: 'pre-wrap'
-                  }}>
-                    {msg.text}
-                  </div>
+                <div
+                  key={idx}
+                  className={`fc-row ${msg.sender === 'user' ? 'user' : 'bot'}`}
+                >
+                  <div className="fc-bubble">{msg.text}</div>
                 </div>
               ))}
-              
+
               {isLoading && (
-                <div style={{ alignSelf: 'flex-end', animation: 'slideUp 0.3s ease forwards' }}>
-                  <div style={{ backgroundColor: '#ffffff', padding: '12px 16px', borderRadius: '16px', borderBottomLeftRadius: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <span className="typing-dot"></span>
-                    <span className="typing-dot"></span>
-                    <span className="typing-dot"></span>
+                <div className="fc-row bot">
+                  <div className="fc-bubble">
+                    <span className="fc-typing">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
                   </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            <div style={{ padding: '12px', backgroundColor: '#ffffff', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <input 
-                type="text" 
-                value={input} 
+            <div className="fc-foot">
+              <input
+                className="fc-input"
+                type="text"
+                value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                placeholder="اكتب استفسارك هنا..." 
-                style={{ flex: 1, padding: '12px 16px', borderRadius: '24px', border: '1px solid #e2e8f0', outline: 'none', color: '#1e293b', backgroundColor: '#f8fafc', fontSize: '14px' }}
+                placeholder="اكتب استفسارك هنا..."
                 disabled={isLoading}
               />
-              <button 
-                onClick={sendMessage} 
+              <button
+                className="fc-send"
+                onClick={sendMessage}
                 disabled={isLoading || !input.trim()}
-                style={{ 
-                  background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', 
-                  color: '#fff', border: 'none', width: '44px', height: '44px', 
-                  borderRadius: '50%', cursor: 'pointer', display: 'flex', 
-                  justifyContent: 'center', alignItems: 'center',
-                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
-                  opacity: (!input.trim() || isLoading) ? 0.7 : 1
-                }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                aria-label="إرسال"
+              >
+                <svg
+                  width="19"
+                  height="19"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M22 2L11 13"
+                    stroke="currentColor"
+                    strokeWidth="2.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M22 2L15 22L11 13L2 9L22 2Z"
+                    stroke="currentColor"
+                    strokeWidth="2.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </button>
             </div>
@@ -191,18 +235,25 @@ const FloatingChat: React.FC<FloatingChatProps> = ({ patientId }) => {
         )}
 
         {!isOpen && (
-          <button 
+          <button
+            className="fc-fab"
             onClick={() => setIsOpen(true)}
-            style={{ 
-              width: '60px', height: '60px', borderRadius: '50%', 
-              background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', 
-              color: '#fff', border: 'none', cursor: 'pointer', 
-              boxShadow: '0 6px 20px rgba(2, 132, 199, 0.4)', 
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              animation: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
-            }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            aria-label="فتح المحادثة"
+          >
+            <svg
+              width="27"
+              height="27"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         )}

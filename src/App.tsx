@@ -1,5 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import './patient.css';
+import './doctor.css';
 import emailjs from '@emailjs/browser';
 import FloatingChat from './FloatingChat';
 import { sendFeedbackWebhook } from './Feedback';
@@ -239,10 +241,7 @@ const safeReadStorage = (key, fallback) => {
 };
 
 export default function App() {
-
-
-
-//////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
 
   //// --- بداية نظام تسجيل الدخول والتفريق بين الدكتور والمريض ---
   const [currentUser, setCurrentUser] = useState<any>(() => {
@@ -276,13 +275,13 @@ export default function App() {
     try {
       setIsSendingOtp(true);
       await emailjs.send(
-        'service_wzi547i',      // Service ID
-        'template_g3n7nsf',     // Template ID
+        'service_wzi547i', // Service ID
+        'template_g3n7nsf', // Template ID
         {
           to_email: userEmail,
           otp_code: otpCode,
         },
-        'hZPUVXx24iZV_-KT4'      // Public Key
+        'hZPUVXx24iZV_-KT4' // Public Key
       );
       return true;
     } catch (error) {
@@ -294,85 +293,108 @@ export default function App() {
     }
   };
 
-// دالة مراجعة الكود اللي المريض كتبه
-const handleVerifyOtp = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  // لو الكود اللي كتبه هو نفس الكود اللي اتبعتله
-  if (userEnteredOtp === generatedOtp) {
-    
-    // --- الجديد: حفظ البيانات في قاعدة البيانات (فقط لو كان حساب جديد) ---
-    if (fullSignupData) {
-      try {
-        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_PROJECT_URL;
-        const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  // دالة مراجعة الكود اللي المريض كتبه
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-        // 1. الحفظ في قاعدة البيانات Supabase
-        if (SUPABASE_URL && SUPABASE_KEY) {
-          await fetch(`${SUPABASE_URL}/rest/v1/patient_accounts`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-              'Prefer': 'return=representation'
-            },
-            body: JSON.stringify(fullSignupData)
+    // لو الكود اللي كتبه هو نفس الكود اللي اتبعتله
+    if (userEnteredOtp === generatedOtp) {
+      // --- الجديد: حفظ البيانات في قاعدة البيانات (فقط لو كان حساب جديد) ---
+      if (fullSignupData) {
+        try {
+          const SUPABASE_URL =
+            import.meta.env.VITE_SUPABASE_URL ||
+            import.meta.env.VITE_SUPABASE_PROJECT_URL;
+          const SUPABASE_KEY =
+            import.meta.env.VITE_SUPABASE_ANON_KEY ||
+            import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+          // 1. الحفظ في قاعدة البيانات Supabase
+          if (SUPABASE_URL && SUPABASE_KEY) {
+            await fetch(`${SUPABASE_URL}/rest/v1/patient_accounts`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: SUPABASE_KEY,
+                Authorization: `Bearer ${SUPABASE_KEY}`,
+                Prefer: 'return=representation',
+              },
+              body: JSON.stringify(fullSignupData),
+            });
+          }
+
+          // 2. حفظ نسخة محلية احتياطية (عشان يفضل مسجل على الجهاز)
+          const registeredPatients = JSON.parse(
+            localStorage.getItem('clinic_registered_patients') || '[]'
+          );
+          registeredPatients.push({
+            id: fullSignupData.id,
+            name: fullSignupData.name,
+            email: fullSignupData.email,
+            phone: fullSignupData.phone,
+            passwordHash: fullSignupData.password_hash,
+            role: 'patient',
           });
+          localStorage.setItem(
+            'clinic_registered_patients',
+            JSON.stringify(registeredPatients)
+          );
+        } catch (err) {
+          console.error('خطأ أثناء حفظ الحساب الجديد:', err);
         }
-
-        // 2. حفظ نسخة محلية احتياطية (عشان يفضل مسجل على الجهاز)
-        const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
-        registeredPatients.push({
-          id: fullSignupData.id,
-          name: fullSignupData.name,
-          email: fullSignupData.email,
-          phone: fullSignupData.phone,
-          passwordHash: fullSignupData.password_hash,
-          role: 'patient'
-        });
-        localStorage.setItem('clinic_registered_patients', JSON.stringify(registeredPatients));
-      } catch (err) {
-        console.error('خطأ أثناء حفظ الحساب الجديد:', err);
       }
-    }
-    // -------------------------------------------------------------
+      // -------------------------------------------------------------
 
-    // الدخول بنجاح بعد التأكيد
-    localStorage.setItem('clinic_logged_user', JSON.stringify(pendingPatient));
-    setCurrentUser(pendingPatient);
-    
-    // تصفير الذاكرة وإخفاء شاشة الأرقام
-    setShowOtpScreen(false);
-    setUserEnteredOtp('');
-    setGeneratedOtp('');
-    setPendingPatient(null);
-    setFullSignupData(null); // مسح الذاكرة المؤقتة بعد الحفظ
-  } else {
-    // لو الكود غلط
-    alert('الكود الذي أدخلته غير صحيح، يرجى مراجعة الإيميل والمحاولة مرة أخرى.');
-  }
-};
+      // الدخول بنجاح بعد التأكيد
+      localStorage.setItem(
+        'clinic_logged_user',
+        JSON.stringify(pendingPatient)
+      );
+      setCurrentUser(pendingPatient);
+
+      // تصفير الذاكرة وإخفاء شاشة الأرقام
+      setShowOtpScreen(false);
+      setUserEnteredOtp('');
+      setGeneratedOtp('');
+      setPendingPatient(null);
+      setFullSignupData(null); // مسح الذاكرة المؤقتة بعد الحفظ
+    } else {
+      // لو الكود غلط
+      alert(
+        'الكود الذي أدخلته غير صحيح، يرجى مراجعة الإيميل والمحاولة مرة أخرى.'
+      );
+    }
+  };
 
   /////////////////////////////////////////////////////////////
   // --- متغيرات بوابة المريض الاحترافية --- //
 
-
   ///////////////////////////////////////////////////
-// --- متغيرات بوابة المريض الاحترافية ---
-const [portalTab, setPortalTab] = useState<'home' | 'book' | 'patients' | 'appointments'>('home');
-const [selectedPatientForBook, setSelectedPatientForBook] = useState('');
-const [selectedServiceForBook, setSelectedServiceForBook] = useState('');
-const [selectedDoctorForBook, setSelectedDoctorForBook] = useState('د. طارق السعيد');
-const [selectedDateForBook, setSelectedDateForBook] = useState(() => new Date().toISOString().split('T')[0]);
-const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
-const [newPatientForm, setNewPatientForm] = useState({ name: '', phone: '', age: '', gender: 'ذكر', notes: '' });
-const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-
+  // --- متغيرات بوابة المريض الاحترافية ---
+  const [portalTab, setPortalTab] = useState<
+    'home' | 'book' | 'patients' | 'appointments'
+  >('home');
+  const [selectedPatientForBook, setSelectedPatientForBook] = useState('');
+  const [selectedServiceForBook, setSelectedServiceForBook] = useState('');
+  const [selectedDoctorForBook, setSelectedDoctorForBook] =
+    useState('د. طارق السعيد');
+  const [selectedDateForBook, setSelectedDateForBook] = useState(
+    () => new Date().toISOString().split('T')[0]
+  );
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
+  const [newPatientForm, setNewPatientForm] = useState({
+    name: '',
+    phone: '',
+    age: '',
+    gender: 'ذكر',
+    notes: '',
+  });
+  const [portalMessage, setPortalMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   /////////////////////////////////////////////////
-
 
   // دالة تشفير كلمة المرور (SHA-256) قبل حفظها في localStorage
   const hashPassword = async (password: string): Promise<string> => {
@@ -382,10 +404,11 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   };
 
-
- const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
   //const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
-  const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_KEY;
+  const SUPABASE_KEY =
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    import.meta.env.VITE_SUPABASE_KEY;
 
   // دالة مساعدة لتشغيل نظام الـ OTP قبل الدخول
   const handlePatientSuccess = async (userObj: any, userEmail: string) => {
@@ -393,7 +416,7 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(otp);
     setPendingPatient(userObj); // حفظ بيانات المريض مؤقتاً
-    
+
     // 2. إرسال الإيميل وإظهار الشاشة
     const isSent = await sendOtpEmail(userEmail, otp);
     if (isSent) {
@@ -414,14 +437,19 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
 
     //--- 1. حالة تسجيل الدخول (Login) ---
     if (authMode === 'login') {
-     //  أ. هل هو الطبيب؟
+      //  أ. هل هو الطبيب؟
       if (
         secretDocEmail &&
         secretDocPass &&
         cleanEmail === secretDocEmail.trim().toLowerCase() &&
         authForm.password === secretDocPass
       ) {
-        const doctorUser = { id: 'DOC-ADMIN', name: 'د. طارق السعيد', email: secretDocEmail, role: 'doctor' };
+        const doctorUser = {
+          id: 'DOC-ADMIN',
+          name: 'د. طارق السعيد',
+          email: secretDocEmail,
+          role: 'doctor',
+        };
         localStorage.setItem('clinic_logged_user', JSON.stringify(doctorUser));
         setCurrentUser(doctorUser);
         return;
@@ -429,9 +457,11 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
 
       // ب. البحث عن حساب المريض في Supabase أولاً (ليعمل من أي هاتف أو جهاز)
       if (SUPABASE_URL && SUPABASE_KEY) {
-       try {
+        try {
           const res = await fetch(
-            `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(cleanEmail)}&select=*`,
+            `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(
+              cleanEmail
+            )}&select=*`,
             {
               headers: {
                 apikey: SUPABASE_KEY,
@@ -443,27 +473,49 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
             const rows = await res.json();
             const cloudPatient = rows[0];
 
-            if (cloudPatient && cloudPatient.password_hash === hashedInputPassword) {
-               //استرجاع ملفات المريض وحجوزاته المحفوظة على السحابة ووضعها في المتصفح الحالي
-              const patKey = `clinic_my_patients_${cloudPatient.email || cloudPatient.phone}`;
-              const aptKey = `clinic_my_apts_${cloudPatient.email || cloudPatient.phone}`;
-              if (Array.isArray(cloudPatient.my_patients) && cloudPatient.my_patients.length > 0) {
-                localStorage.setItem(patKey, JSON.stringify(cloudPatient.my_patients));
+            if (
+              cloudPatient &&
+              cloudPatient.password_hash === hashedInputPassword
+            ) {
+              //استرجاع ملفات المريض وحجوزاته المحفوظة على السحابة ووضعها في المتصفح الحالي
+              const patKey = `clinic_my_patients_${
+                cloudPatient.email || cloudPatient.phone
+              }`;
+              const aptKey = `clinic_my_apts_${
+                cloudPatient.email || cloudPatient.phone
+              }`;
+              if (
+                Array.isArray(cloudPatient.my_patients) &&
+                cloudPatient.my_patients.length > 0
+              ) {
+                localStorage.setItem(
+                  patKey,
+                  JSON.stringify(cloudPatient.my_patients)
+                );
               }
-              if (Array.isArray(cloudPatient.my_appointments) && cloudPatient.my_appointments.length > 0) {
-                localStorage.setItem(aptKey, JSON.stringify(cloudPatient.my_appointments));
+              if (
+                Array.isArray(cloudPatient.my_appointments) &&
+                cloudPatient.my_appointments.length > 0
+              ) {
+                localStorage.setItem(
+                  aptKey,
+                  JSON.stringify(cloudPatient.my_appointments)
+                );
               }
 
               const safeSessionUser = {
                 id: cloudPatient.id,
                 name: cloudPatient.name,
-               email: cloudPatient.email,
+                email: cloudPatient.email,
                 phone: cloudPatient.phone,
                 role: 'patient',
               };
-             localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
-             setCurrentUser(safeSessionUser);
-            //  await handlePatientSuccess(safeSessionUser, cleanEmail);
+              localStorage.setItem(
+                'clinic_logged_user',
+                JSON.stringify(safeSessionUser)
+              );
+              setCurrentUser(safeSessionUser);
+              //  await handlePatientSuccess(safeSessionUser, cleanEmail);
               return;
             }
           }
@@ -473,11 +525,14 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
       }
 
       // ج. التحقق الاحتياطي من localStorage لو الحساب قديم على نفس الجهاز
-      const registeredPatients = JSON.parse(localStorage.getItem('clinic_registered_patients') || '[]');
+      const registeredPatients = JSON.parse(
+        localStorage.getItem('clinic_registered_patients') || '[]'
+      );
       const localPatient = registeredPatients.find(
         (p: any) =>
           p.email.toLowerCase() === cleanEmail &&
-          (p.passwordHash === hashedInputPassword || p.password === authForm.password)
+          (p.passwordHash === hashedInputPassword ||
+            p.password === authForm.password)
       );
 
       if (localPatient) {
@@ -488,11 +543,13 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
           phone: localPatient.phone,
           role: 'patient',
         };
-       // localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
-       await handlePatientSuccess(safeSessionUser, cleanEmail);
-       // setCurrentUser(safeSessionUser);
+        // localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+        await handlePatientSuccess(safeSessionUser, cleanEmail);
+        // setCurrentUser(safeSessionUser);
       } else {
-        setAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التأكد أو إنشاء حساب جديد.');
+        setAuthError(
+          'البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التأكد أو إنشاء حساب جديد.'
+        );
       }
       return;
     }
@@ -512,7 +569,9 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
       if (SUPABASE_URL && SUPABASE_KEY) {
         try {
           const checkRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(cleanEmail)}&select=email`,
+            `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(
+              cleanEmail
+            )}&select=email`,
             {
               headers: {
                 apikey: SUPABASE_KEY,
@@ -523,27 +582,28 @@ const [portalMessage, setPortalMessage] = useState<{ type: 'success' | 'error'; 
           if (checkRes.ok) {
             const existing = await checkRes.json();
             if (existing.length > 0) {
-              setAuthError('هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.');
+              setAuthError(
+                'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.'
+              );
               return;
             }
           }
-// تجهيز بيانات المريض في الذاكرة المؤقتة (بدون حفظها الآن)
-const signupPayload = {
-  id: newPatientId,
-  name: newPatientName,
-  email: cleanEmail,
-  phone: newPatientPhone,
-  password_hash: hashedInputPassword,
-  role: 'patient',
-  my_patients: [],
-  my_appointments: []
-};
-setFullSignupData(signupPayload);
+          // تجهيز بيانات المريض في الذاكرة المؤقتة (بدون حفظها الآن)
+          const signupPayload = {
+            id: newPatientId,
+            name: newPatientName,
+            email: cleanEmail,
+            phone: newPatientPhone,
+            password_hash: hashedInputPassword,
+            role: 'patient',
+            my_patients: [],
+            my_appointments: [],
+          };
+          setFullSignupData(signupPayload);
         } catch (err) {
           console.error('Supabase Signup Error:', err);
         }
       }
-
 
       const safeSessionUser = {
         id: newPatientId,
@@ -552,25 +612,15 @@ setFullSignupData(signupPayload);
         phone: newPatientPhone,
         role: 'patient',
       };
-     // localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
-     await handlePatientSuccess(safeSessionUser, cleanEmail);
-     // setCurrentUser(safeSessionUser);
+      // localStorage.setItem('clinic_logged_user', JSON.stringify(safeSessionUser));
+      await handlePatientSuccess(safeSessionUser, cleanEmail);
+      // setCurrentUser(safeSessionUser);
     }
   };
 
-
- 
-
-
-
   // --- نهاية دالة تسجيل الدخول ---
 
-
-//////////////////////////////////////////////////////////////////////////////
-
-
-
-
+  //////////////////////////////////////////////////////////////////////////////
 
   // التبويب النشط
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -697,7 +747,7 @@ setFullSignupData(signupPayload);
 
       // ب) جلب المرضى من الرابط المستقل (بدون /services/1/patients نهائياً)
       try {
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 1500));
         const resPat = await fetch(API_ENDPOINTS.PATIENTS, {
           cache: 'no-store',
         });
@@ -939,60 +989,60 @@ setFullSignupData(signupPayload);
     }
   };
 
- // const handleDeletePatient = async (id) => {
-   // const strId = String(id);
-   // setPatients((prev) => prev.filter((p) => String(p.id) !== strId));
-   // try {
-    //  await fetch(`${API_ENDPOINTS.PATIENTS}/${strId}`, { method: 'DELETE' });
-    //  showNotification('تم حذف ملف المريض نهائياً من التطبيق ومن MockAPI!');
-   // } catch {
-    //  showNotification('تم حذف المريض.', 'info');
-   // }
+  // const handleDeletePatient = async (id) => {
+  // const strId = String(id);
+  // setPatients((prev) => prev.filter((p) => String(p.id) !== strId));
+  // try {
+  //  await fetch(`${API_ENDPOINTS.PATIENTS}/${strId}`, { method: 'DELETE' });
+  //  showNotification('تم حذف ملف المريض نهائياً من التطبيق ومن MockAPI!');
+  // } catch {
+  //  showNotification('تم حذف المريض.', 'info');
+  // }
   //};
 
   const handleDeletePatient = async (id: any) => {
     const strId = String(id);
-    
+
     // 1. البحث عن المريض بالـ ID لمعرفة رقم تليفونه
     const patientToDelete = patients.find((p: any) => String(p.id) === strId);
-    if (!patientToDelete) return; 
-  
+    if (!patientToDelete) return;
+
     // 2. مسح المريض من الشاشة فوراً
     setPatients((prev: any) => prev.filter((p: any) => String(p.id) !== strId));
-  
+
     try {
       // 3. مسح المريض من الـ API
       await fetch(`${API_ENDPOINTS.PATIENTS}/${strId}`, { method: 'DELETE' });
-  
+
       // 4. الحذف المتسلسل للمواعيد: (البحث برقم التليفون فقط)
       const aptsToDelete = appointments.filter(
         (apt: any) => apt.phone === patientToDelete.phone
       );
-  
+
       // مسح مواعيده من الشاشة (باستثناء اللي تليفونهم مش مطابق)
-      setAppointments((prev: any) => 
+      setAppointments((prev: any) =>
         prev.filter((apt: any) => apt.phone !== patientToDelete.phone)
       );
-  
+
       // مسح مواعيده من الـ API
       for (const apt of aptsToDelete) {
-         const cleanAptId = String(apt.id).replace(/\D/g, ''); 
-         if (cleanAptId) {
-           await fetch(`https://6ae4c8f828393034b08df0d3.mockapi.io/appointments/${cleanAptId}`, {
-             method: 'DELETE',
-           });
-         }
+        const cleanAptId = String(apt.id).replace(/\D/g, '');
+        if (cleanAptId) {
+          await fetch(
+            `https://6ae4c8f828393034b08df0d3.mockapi.io/appointments/${cleanAptId}`,
+            {
+              method: 'DELETE',
+            }
+          );
+        }
       }
-      
+
       showNotification('تم الحذف بنجاح!');
     } catch (error) {
       console.error(error);
       showNotification('حدث خطأ أثناء الاتصال بقاعدة البيانات');
     }
   };
-
-
-
 
   // ============================================================================
   // 6. إدارة المواعيد (إضافة / تعديل / تغيير حالة / حذف مباشر في MockAPI)
@@ -1165,35 +1215,39 @@ setFullSignupData(signupPayload);
     setVisitModal({ open: false, editing: null });
   };
 
- // const handleDeleteVisit = (id) => {
-   // setVisits((prev) => prev.filter((v) => String(v.id) !== String(id)));
+  // const handleDeleteVisit = (id) => {
+  // setVisits((prev) => prev.filter((v) => String(v.id) !== String(id)));
   //  showNotification('تم حذف سجل الزيارة.');
- // };
+  // };
 
- const handleDeleteVisit = async (id: any) => {
-  // 1. تنظيف الـ ID: استخراج الرقم الصافي فقط (عشان MockAPI يفهمه)
-  const cleanId = String(id).replace(/\D/g, ''); 
+  const handleDeleteVisit = async (id: any) => {
+    // 1. تنظيف الـ ID: استخراج الرقم الصافي فقط (عشان MockAPI يفهمه)
+    const cleanId = String(id).replace(/\D/g, '');
 
-  // 2. مسح الزيارة من الشاشة ومن LocalStorage فوراً عشان مترجعش مع الـ Reload
-  setVisits((prev: any) => {
-    const updatedVisits = prev.filter((v: any) => String(v.id) !== String(id));
-    localStorage.setItem(STORAGE_KEYS.VISITS, JSON.stringify(updatedVisits));
-    return updatedVisits;
-  });
+    // 2. مسح الزيارة من الشاشة ومن LocalStorage فوراً عشان مترجعش مع الـ Reload
+    setVisits((prev: any) => {
+      const updatedVisits = prev.filter(
+        (v: any) => String(v.id) !== String(id)
+      );
+      localStorage.setItem(STORAGE_KEYS.VISITS, JSON.stringify(updatedVisits));
+      return updatedVisits;
+    });
 
-  // 3. إرسال أمر الحذف للـ API بالرقم الصافي 
-  try {
-    if (cleanId) {
-      await fetch(`https://6ae4c8f828393034b08df0d3.mockapi.io/appointments/${cleanId}`, {
-        method: 'DELETE',
-      });
+    // 3. إرسال أمر الحذف للـ API بالرقم الصافي
+    try {
+      if (cleanId) {
+        await fetch(
+          `https://6ae4c8f828393034b08df0d3.mockapi.io/appointments/${cleanId}`,
+          {
+            method: 'DELETE',
+          }
+        );
+      }
+      showNotification('تم حذف سجل الزيارة نهائياً بنجاح');
+    } catch (error) {
+      console.error('Error deleting from API:', error);
     }
-    showNotification('تم حذف سجل الزيارة نهائياً بنجاح');
-  } catch (error) {
-    console.error('Error deleting from API:', error);
-  }
-};
-
+  };
 
   const handleSaveService = async (e) => {
     e.preventDefault();
@@ -1282,14 +1336,18 @@ setFullSignupData(signupPayload);
     );
   }, [patients, patientSearch]);
 
- // const filteredAppointments = useMemo(() => {
-    //if (appointmentFilter === 'الكل') return appointments;
-   // return appointments.filter((a) => a.status === appointmentFilter);
+  // const filteredAppointments = useMemo(() => {
+  //if (appointmentFilter === 'الكل') return appointments;
+  // return appointments.filter((a) => a.status === appointmentFilter);
   //}, [appointments, appointmentFilter]);
   const filteredAppointments = useMemo(() => {
-    const activeAppointments = appointments.filter((a: any) => a.status !== 'مكتمل');
+    const activeAppointments = appointments.filter(
+      (a: any) => a.status !== 'مكتمل'
+    );
     if (appointmentFilter === 'الكل') return activeAppointments;
-    return activeAppointments.filter((a: any) => a.status === appointmentFilter);
+    return activeAppointments.filter(
+      (a: any) => a.status === appointmentFilter
+    );
   }, [appointments, appointmentFilter]);
 
   const dashboardStats = useMemo(() => {
@@ -1374,101 +1432,121 @@ setFullSignupData(signupPayload);
     };
   }, [activeTab, patients.length, visits.length, services.length]);
 
-
-
-
-//////////////////////////////////////////////////////
-// 1. لو مفيش حد مسجل دخول -> اعرض شاشة Login / Sign Up
+  //////////////////////////////////////////////////////
+  // 1. لو مفيش حد مسجل دخول -> اعرض شاشة Login / Sign Up
   if (!currentUser) {
-
     // --- شاشة إدخال كود التحقق (OTP) ---
- // --- شاشة إدخال كود التحقق (OTP) ---
- if (showOtpScreen) {
-  return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4" dir="rtl">
-      <div className="max-w-md w-full bg-slate-800 rounded-2xl p-8 border border-slate-700 shadow-2xl relative overflow-hidden">
-        {/* تأثير الإضاءة في الخلفية */}
-        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-sky-500 to-indigo-500"></div>
-        
-        <div className="text-center mb-8">
-          <div className="bg-sky-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-sky-500/20">
-            <ShieldCheck className="w-10 h-10 text-sky-400" />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">كود الأمان (OTP)</h2>
-          <p className="text-sm text-slate-400">
-            تم إرسال كود من 6 أرقام إلى بريدك الإلكتروني.
-            <br /> يرجى إدخاله هنا لإتمام تسجيل الدخول.
-          </p>
-          <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-            <p className="text-xs text-amber-400">
-              ⚠️ تنبيه: يرجى التحقق من مجلد الرسائل المزعجة (Spam) إذا لم تجد الكود في البريد الوارد.
-            </p>
+    // --- شاشة إدخال كود التحقق (OTP) ---
+    if (showOtpScreen) {
+      return (
+        <div
+          className="min-h-screen bg-slate-900 flex items-center justify-center p-4"
+          dir="rtl"
+        >
+          <div className="max-w-md w-full bg-slate-800 rounded-2xl p-8 border border-slate-700 shadow-2xl relative overflow-hidden">
+            {/* تأثير الإضاءة في الخلفية */}
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-sky-500 to-indigo-500"></div>
+
+            <div className="text-center mb-8">
+              <div className="bg-sky-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-sky-500/20">
+                <ShieldCheck className="w-10 h-10 text-sky-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                كود الأمان (OTP)
+              </h2>
+              <p className="text-sm text-slate-400">
+                تم إرسال كود من 6 أرقام إلى بريدك الإلكتروني.
+                <br /> يرجى إدخاله هنا لإتمام تسجيل الدخول.
+              </p>
+              <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <p className="text-xs text-amber-400">
+                  ⚠️ تنبيه: يرجى التحقق من مجلد الرسائل المزعجة (Spam) إذا لم
+                  تجد الكود في البريد الوارد.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <div>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="أدخل الـ 6 أرقام"
+                  className="w-full text-center tracking-[0.5em] text-3xl font-bold px-4 py-4 rounded-xl bg-slate-900 border border-slate-600 text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all placeholder:text-slate-600 placeholder:text-lg placeholder:tracking-normal placeholder:font-normal"
+                  value={userEnteredOtp}
+                  onChange={(e) =>
+                    setUserEnteredOtp(e.target.value.replace(/\D/g, ''))
+                  } // السماح بالأرقام فقط
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-400 hover:to-indigo-400 text-white font-semibold shadow-lg shadow-sky-500/25 transition-all flex items-center justify-center gap-2"
+              >
+                تأكيد الدخول
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOtpScreen(false);
+                  setIsSendingOtp(false);
+                }}
+                className="w-full py-3 rounded-xl bg-transparent border-2 border-slate-700 hover:bg-slate-800 text-slate-300 font-semibold transition-all"
+              >
+                الرجوع وتعديل البيانات
+              </button>
+            </form>
           </div>
         </div>
-
-        <form onSubmit={handleVerifyOtp} className="space-y-5">
-          <div>
-            <input
-              type="text"
-              maxLength={6}
-              placeholder="أدخل الـ 6 أرقام"
-              className="w-full text-center tracking-[0.5em] text-3xl font-bold px-4 py-4 rounded-xl bg-slate-900 border border-slate-600 text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all placeholder:text-slate-600 placeholder:text-lg placeholder:tracking-normal placeholder:font-normal"
-              value={userEnteredOtp}
-              onChange={(e) => setUserEnteredOtp(e.target.value.replace(/\D/g, ''))} // السماح بالأرقام فقط
-              required
-            />
-          </div>
-          
-          <button
-            type="submit"
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-400 hover:to-indigo-400 text-white font-semibold shadow-lg shadow-sky-500/25 transition-all flex items-center justify-center gap-2"
-          >
-            تأكيد الدخول
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => {
-              setShowOtpScreen(false);
-              setIsSendingOtp(false);
-            }}
-            className="w-full py-3 rounded-xl bg-transparent border-2 border-slate-700 hover:bg-slate-800 text-slate-300 font-semibold transition-all"
-          >
-            الرجوع وتعديل البيانات
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
+      );
+    }
 
     return (
-      <div dir="rtl" className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-white">
+      <div
+        dir="rtl"
+        className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-white"
+      >
         <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
           <div className="text-center mb-6">
             <div className="w-14 h-14 bg-teal-500/20 text-teal-400 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-teal-500/30">
               <Stethoscope className="w-8 h-8" />
             </div>
-            <h1 className="text-2xl font-bold text-white">عيادة الابتسامة الذكية</h1>
-            <p className="text-slate-400 text-sm mt-1">تسجيل الدخول للمرضى والأطباء</p>
+            <h1 className="text-2xl font-bold text-white">
+              عيادة الابتسامة الذكية
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              تسجيل الدخول للمرضى والأطباء
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 p-1 bg-slate-800 rounded-xl mb-6">
             <button
               type="button"
-              onClick={() => { setAuthMode('login'); setAuthError(''); }}
+              onClick={() => {
+                setAuthMode('login');
+                setAuthError('');
+              }}
               className={`py-2.5 rounded-lg text-sm font-bold transition ${
-                authMode === 'login' ? 'bg-teal-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                authMode === 'login'
+                  ? 'bg-teal-500 text-slate-950'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               تسجيل دخول (Login)
             </button>
             <button
               type="button"
-              onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+              onClick={() => {
+                setAuthMode('signup');
+                setAuthError('');
+              }}
               className={`py-2.5 rounded-lg text-sm font-bold transition ${
-                authMode === 'signup' ? 'bg-teal-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                authMode === 'signup'
+                  ? 'bg-teal-500 text-slate-950'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               حساب جديد (Sign Up)
@@ -1484,50 +1562,66 @@ setFullSignupData(signupPayload);
           <form onSubmit={handleAuthSubmit} className="space-y-4">
             {authMode === 'signup' && (
               <div>
-                <label className="block text-xs text-slate-300 mb-1">اسم </label>
+                <label className="block text-xs text-slate-300 mb-1">
+                  اسم{' '}
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="name"
                   value={authForm.name}
-                  onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                  onChange={(e) =>
+                    setAuthForm({ ...authForm, name: e.target.value })
+                  }
                   className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-xs text-slate-300 mb-1">البريد الإلكتروني</label>
+              <label className="block text-xs text-slate-300 mb-1">
+                البريد الإلكتروني
+              </label>
               <input
                 type="email"
                 required
                 placeholder="email"
                 value={authForm.email}
-                onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                onChange={(e) =>
+                  setAuthForm({ ...authForm, email: e.target.value })
+                }
                 className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm"
               />
             </div>
             {authMode === 'signup' && (
-  <div>
-    <label className="block text-xs text-slate-300 mb-1">رقم الهاتف (للمريض لربط ملفه)</label>
-    <input
-      type="tel"
-      placeholder="phone"
-      value={authForm.phone}
-      onChange={(e) => setAuthForm({ ...authForm, phone: e.target.value })}
-      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700"
-    />
-  </div>
-)}
+              <div>
+                <label className="block text-xs text-slate-300 mb-1">
+                  رقم الهاتف (للمريض لربط ملفه)
+                </label>
+                <input
+                  type="tel"
+                  placeholder="phone"
+                  value={authForm.phone}
+                  onChange={(e) =>
+                    setAuthForm({ ...authForm, phone: e.target.value })
+                  }
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700"
+                />
+              </div>
+            )}
 
             <div>
-              <label className="block text-xs text-slate-300 mb-1">كلمة المرور</label>
+              <label className="block text-xs text-slate-300 mb-1">
+                كلمة المرور
+              </label>
               <input
                 type="password"
                 required
                 placeholder="password"
                 value={authForm.password}
-                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                onChange={(e) =>
+                  setAuthForm({ ...authForm, password: e.target.value })
+                }
                 className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm"
               />
             </div>
@@ -1547,742 +1641,955 @@ setFullSignupData(signupPayload);
   }
 
   // 2. لو اللي مسجل دخول هو "مريض" (role === 'patient') -> يفتح له Patient Portal خاص بيه فقط
-// 2. بوابة المريض الاحترافية (Professional Patient Portal)
-if (currentUser.role === 'patient') {
-  const CLINIC_TIME_SLOTS = [
-    '10:00 ص', '10:30 ص', '11:00 ص', '11:30 ص',
-    '12:00 م', '12:30 م', '01:00 م', '01:30 م',
-    '04:00 م', '04:30 م', '05:00 م', '05:30 م',
-    '06:00 م', '06:30 م', '07:00 م', '07:30 م',
-    '08:00 م', '08:30 م', '09:00 م'
-  ];
+  // 2. بوابة المريض الاحترافية (Professional Patient Portal)
+  if (currentUser.role === 'patient') {
+    const CLINIC_TIME_SLOTS = [
+      '10:00 ص',
+      '10:30 ص',
+      '11:00 ص',
+      '11:30 ص',
+      '12:00 م',
+      '12:30 م',
+      '01:00 م',
+      '01:30 م',
+      '04:00 م',
+      '04:30 م',
+      '05:00 م',
+      '05:30 م',
+      '06:00 م',
+      '06:30 م',
+      '07:00 م',
+      '07:30 م',
+      '08:00 م',
+      '08:30 م',
+      '09:00 م',
+    ];
 
-  // فحص هل المريض حضر العيادة وتم تسجيل زيارته في قسم "الزيارات والمتابعة" لدى الدكتور؟
-  const isAppointmentCompletedInVisits = (apt: any) => {
-    if (apt.status === 'مكتمل' || apt.status === 'Completed') return true;
-    return visits.some(
-      (v: any) =>
-        (v.patientName?.trim() === apt.patientName?.trim() || v.patientId === apt.patientId) &&
-        (!v.date || !apt.date || v.date >= apt.date)
+    // فحص هل المريض حضر العيادة وتم تسجيل زيارته في قسم "الزيارات والمتابعة" لدى الدكتور؟
+    const isAppointmentCompletedInVisits = (apt: any) => {
+      if (apt.status === 'مكتمل' || apt.status === 'Completed') return true;
+      return visits.some(
+        (v: any) =>
+          (v.patientName?.trim() === apt.patientName?.trim() ||
+            v.patientId === apt.patientId) &&
+          (!v.date || !apt.date || v.date >= apt.date)
+      );
+    };
+
+    // فحص هل المريض لديه حجز نشط لم يكتمل بعد؟
+    const hasActiveUncompletedBooking = (patientName: string) => {
+      if (!patientName) return false;
+      return appointments.some(
+        (apt: any) =>
+          apt.patientName?.trim().toLowerCase() ===
+            patientName.trim().toLowerCase() &&
+          (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد')
+      );
+    };
+
+    // 1. استرجاع ودمج ملفات المرضى الخاصة بحساب العميل (ثابتة ضد الـ Reload وبدون Hooks)
+    const storagePatientsKey = `clinic_my_patients_${
+      currentUser.email || currentUser.phone
+    }`;
+    const savedPortalPatients = JSON.parse(
+      localStorage.getItem(storagePatientsKey) || '[]'
     );
-  };
+    const myRegisteredPatients = [
+      ...savedPortalPatients,
+      ...patients.filter((p: any) => {
+        // 1. تأمين الإيميل ورقم التليفون عشان لو العميل مسجل بواحد فيهم بس الكود ميضربش
+        const userEmail = currentUser?.email
+          ? String(currentUser.email).trim().toLowerCase()
+          : null;
+        const userPhone = currentUser?.phone
+          ? String(currentUser.phone).trim()
+          : null;
 
-  // فحص هل المريض لديه حجز نشط لم يكتمل بعد؟
-  const hasActiveUncompletedBooking = (patientName: string) => {
-    if (!patientName) return false;
-    return appointments.some(
-      (apt: any) =>
-        apt.patientName?.trim().toLowerCase() === patientName.trim().toLowerCase() &&
-        (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد')
+        // 2. مطابقة بيانات MockAPI مع العميل الحالي
+        const matchEmail = userEmail
+          ? String(p.createdByAccount).trim().toLowerCase() === userEmail ||
+            String(p.notes).toLowerCase().includes(userEmail)
+          : false;
+        const matchPhone = userPhone
+          ? String(p.phone).trim() === userPhone
+          : false;
+
+        // 3. لغينا فحص الـ (id) عشان نمنع تصادم MockAPI مع الـ LocalStorage واعتمدنا على الاسم
+        const isDuplicate = savedPortalPatients.some(
+          (sp: any) => sp.name === p.name
+        );
+
+        return (matchEmail || matchPhone) && !isDuplicate;
+      }),
+    ].reverse();
+
+    const myPatientNames = new Set([
+      currentUser.name?.trim().toLowerCase(),
+      ...myRegisteredPatients.map((p: any) => p.name?.trim().toLowerCase()),
+    ]);
+
+    // 2. استرجاع ودمج حجوزات العميل (ثابتة ضد الـ Reload وبدون Hooks)
+    const storageAptsKey = `clinic_my_apts_${
+      currentUser.email || currentUser.phone
+    }`;
+    const savedPortalApts = JSON.parse(
+      localStorage.getItem(storageAptsKey) || '[]'
     );
-  };
+    const myAppointments = [
+      ...savedPortalApts,
+      ...appointments.filter((apt: any) => {
+        // 1. تأمين بيانات العميل الحالي
+        const userEmail = currentUser?.email
+          ? String(currentUser.email).trim().toLowerCase()
+          : null;
+        const userPhone = currentUser?.phone
+          ? String(currentUser.phone).trim()
+          : null;
 
+        // 2. مطابقة الموعد مع العميل (بالإيميل في خانتين، أو برقم التليفون)
+        const matchEmail = userEmail
+          ? String(apt.createdByAccount).trim().toLowerCase() === userEmail ||
+            String(apt.notes).toLowerCase().includes(userEmail)
+          : false;
 
+        const matchPhone = userPhone
+          ? String(apt.phone).trim() === userPhone
+          : false;
 
+        // 3. الاحتفاظ بالفلتر القديم (عشان لو الموعد متسجل باسم مريض من عيلة العميل)
+        const matchName = myPatientNames.has(
+          apt.patientName?.trim().toLowerCase()
+        );
 
+        // 4. منع التكرار
+        const isDuplicate = savedPortalApts.some((sa: any) => sa.id === apt.id);
 
-// 1. استرجاع ودمج ملفات المرضى الخاصة بحساب العميل (ثابتة ضد الـ Reload وبدون Hooks)
-const storagePatientsKey = `clinic_my_patients_${currentUser.email || currentUser.phone}`;
-const savedPortalPatients = JSON.parse(localStorage.getItem(storagePatientsKey) || '[]');
-const myRegisteredPatients = [
-  ...savedPortalPatients,
-  ...patients.filter((p: any) => {
-    // 1. تأمين الإيميل ورقم التليفون عشان لو العميل مسجل بواحد فيهم بس الكود ميضربش
-    const userEmail = currentUser?.email ? String(currentUser.email).trim().toLowerCase() : null;
-    const userPhone = currentUser?.phone ? String(currentUser.phone).trim() : null;
+        return (matchEmail || matchPhone || matchName) && !isDuplicate;
+      }),
+    ].reverse(); // الـ reverse هنا عشان الموعد الجديد يظهر أول واحد فوق
 
-    // 2. مطابقة بيانات MockAPI مع العميل الحالي
-    const matchEmail = userEmail ? (String(p.createdByAccount).trim().toLowerCase() === userEmail || String(p.notes).toLowerCase().includes(userEmail)) : false;
-    const matchPhone = userPhone ? String(p.phone).trim() === userPhone : false;
-
-    // 3. لغينا فحص الـ (id) عشان نمنع تصادم MockAPI مع الـ LocalStorage واعتمدنا على الاسم
-    const isDuplicate = savedPortalPatients.some((sp: any) => sp.name === p.name);
-
-    return (matchEmail || matchPhone) && !isDuplicate;
-  })
-].reverse();
-
-const myPatientNames = new Set([
-  currentUser.name?.trim().toLowerCase(),
-  ...myRegisteredPatients.map((p: any) => p.name?.trim().toLowerCase()),
-]);
-
-// 2. استرجاع ودمج حجوزات العميل (ثابتة ضد الـ Reload وبدون Hooks)
-const storageAptsKey = `clinic_my_apts_${currentUser.email || currentUser.phone}`;
-const savedPortalApts = JSON.parse(localStorage.getItem(storageAptsKey) || '[]');
-const myAppointments = [
-  ...savedPortalApts,
-  ...appointments.filter((apt: any) => {
-    // 1. تأمين بيانات العميل الحالي
-    const userEmail = currentUser?.email ? String(currentUser.email).trim().toLowerCase() : null;
-    const userPhone = currentUser?.phone ? String(currentUser.phone).trim() : null;
-
-    // 2. مطابقة الموعد مع العميل (بالإيميل في خانتين، أو برقم التليفون)
-    const matchEmail = userEmail ? (
-      String(apt.createdByAccount).trim().toLowerCase() === userEmail ||
-      String(apt.notes).toLowerCase().includes(userEmail)
-    ) : false;
-    
-    const matchPhone = userPhone ? String(apt.phone).trim() === userPhone : false;
-
-    // 3. الاحتفاظ بالفلتر القديم (عشان لو الموعد متسجل باسم مريض من عيلة العميل)
-    const matchName = myPatientNames.has(apt.patientName?.trim().toLowerCase());
-
-    // 4. منع التكرار
-    const isDuplicate = savedPortalApts.some((sa: any) => sa.id === apt.id);
-
-    return (matchEmail || matchPhone || matchName) && !isDuplicate;
-  })
-].reverse(); // الـ reverse هنا عشان الموعد الجديد يظهر أول واحد فوق
-
-
-
-
-  //////////////////////
-// 1. دالة تسجيل ملف مريض جديد من بوابة العميل + حفظه في الـ API الخاص بالدكتور
-const handleAddPatientFromPortal = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!newPatientForm.name.trim() || !newPatientForm.phone.trim()) {
-    setPortalMessage({ type: 'error', text: 'يرجى إدخال اسم المريض ورقم الهاتف!' });
-    return;
-  }
-
-  const exists = patients.some(
-    (p: any) => p.name?.trim().toLowerCase() === newPatientForm.name.trim().toLowerCase()
-  );
-  if (exists) {
-    setPortalMessage({ type: 'error', text: 'هذا الاسم مسجل بالفعل في ملفات المرضى، يمكنك الحجز له مباشرة.' });
-    return;
-  }
-
-  const newPatPayload = {
-    id: 'PAT-' + Date.now().toString().slice(-5),
-    name: newPatientForm.name.trim(),
-    phone: newPatientForm.phone.trim(),
-    age: Number(newPatientForm.age) || 25,
-    gender: newPatientForm.gender,
-    notes: newPatientForm.notes.trim() || 'تم التسجيل من بوابة المريض',
-    createdByAccount: currentUser.email,
-    createdAt: new Date().toISOString().split('T')[0],
-  };
-
-  try {
-    // إرسال المريض الجديد مباشرة إلى الـ API الخاص بصفحة الدكتور
-    let savedPat = newPatPayload;
-    if (typeof API_ENDPOINTS !== 'undefined' && API_ENDPOINTS.PATIENTS) {
-      const res = await fetch(API_ENDPOINTS.PATIENTS, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPatPayload),
-      });
-      if (res.ok) {
-        savedPat = await res.json();
+    //////////////////////
+    // 1. دالة تسجيل ملف مريض جديد من بوابة العميل + حفظه في الـ API الخاص بالدكتور
+    const handleAddPatientFromPortal = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newPatientForm.name.trim() || !newPatientForm.phone.trim()) {
+        setPortalMessage({
+          type: 'error',
+          text: 'يرجى إدخال اسم المريض ورقم الهاتف!',
+        });
+        return;
       }
-    }
 
-    const updatedPatients = [savedPat, ...patients];
-    setPatients(updatedPatients);
+      const exists = patients.some(
+        (p: any) =>
+          p.name?.trim().toLowerCase() ===
+          newPatientForm.name.trim().toLowerCase()
+      );
+      if (exists) {
+        setPortalMessage({
+          type: 'error',
+          text: 'هذا الاسم مسجل بالفعل في ملفات المرضى، يمكنك الحجز له مباشرة.',
+        });
+        return;
+      }
 
-    localStorage.setItem(storagePatientsKey, JSON.stringify([savedPat, ...myRegisteredPatients]));
+      const newPatPayload = {
+        id: 'PAT-' + Date.now().toString().slice(-5),
+        name: newPatientForm.name.trim(),
+        phone: newPatientForm.phone.trim(),
+        age: Number(newPatientForm.age) || 25,
+        gender: newPatientForm.gender,
+        notes: newPatientForm.notes.trim() || 'تم التسجيل من بوابة المريض',
+        createdByAccount: currentUser.email,
+        createdAt: new Date().toISOString().split('T')[0],
+      };
 
-    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(updatedPatients));
-
-    ////////////////////
-
-    if (SUPABASE_URL && SUPABASE_KEY) {
-      fetch(
-        `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(currentUser.email.toLowerCase())}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-          },
-         // body: JSON.stringify({ my_appointments: [savedApt, ...myAppointments] }),
-         body: JSON.stringify({ my_patients: [savedPat, ...myRegisteredPatients] }),
+      try {
+        // إرسال المريض الجديد مباشرة إلى الـ API الخاص بصفحة الدكتور
+        let savedPat = newPatPayload;
+        if (typeof API_ENDPOINTS !== 'undefined' && API_ENDPOINTS.PATIENTS) {
+          const res = await fetch(API_ENDPOINTS.PATIENTS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newPatPayload),
+          });
+          if (res.ok) {
+            savedPat = await res.json();
+          }
         }
-      ).catch(() => {});
-    }
 
-    ///////////////////////
-    setSelectedPatientForBook(savedPat.name);
-    setNewPatientForm({ name: '', phone: '', age: '', gender: 'ذكر', notes: '' });
-    setPortalMessage({ type: 'success', text: `تم فتح ملف طبي للمريض "${savedPat.name}" وحفظه في قاعدة البيانات السحابية بنجاح!` });
-    setPortalTab('book');
-  } catch (err) {
-    setPortalMessage({ type: 'error', text: 'حدث خطأ أثناء الاتصال بالـ API، يرجى المحاولة مرة أخرى.' });
-  }
-};
+        const updatedPatients = [savedPat, ...patients];
+        setPatients(updatedPatients);
 
-// 2. دالة تأكيد حجز الموعد من الجدول + حفظه في الـ API الخاص بالدكتور
-const handleBookFromPortal = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setPortalMessage(null);
+        localStorage.setItem(
+          storagePatientsKey,
+          JSON.stringify([savedPat, ...myRegisteredPatients])
+        );
 
-  if (!selectedPatientForBook) {
-    setPortalMessage({ type: 'error', text: 'يجب اختيار اسم المريض أولاً (أو تسجيل ملف مريض جديد قبل الحجز)!' });
-    return;
-  }
-  if (!selectedServiceForBook) {
-    setPortalMessage({ type: 'error', text: 'يرجى اختيار الخدمة المطلوبة!' });
-    return;
-  }
-  if (!selectedTimeSlot) {
-    setPortalMessage({ type: 'error', text: 'يرجى اختيار ساعة الموعد من جدول المواعيد المتاحة بالأسفل!' });
-    return;
-  }
+        localStorage.setItem(
+          STORAGE_KEYS.PATIENTS,
+          JSON.stringify(updatedPatients)
+        );
 
-  if (hasActiveUncompletedBooking(selectedPatientForBook)) {
-    setPortalMessage({
-      type: 'error',
-      text: `عفواً، المريض (${selectedPatientForBook}) لديه حجز نشط بالفعل! لا يمكن حجز موعد آخر لنفس المريض إلا بعد حضوره العيادة وتسجيل الزيارة والمتابعة لدى الطبيب. يمكنك تسجيل مريض آخر والحجز له.`,
-    });
-    return;
-  }
+        ////////////////////
 
-  const slotTaken = appointments.some(
-    (apt: any) =>
-      apt.date === selectedDateForBook &&
-      apt.time === selectedTimeSlot &&
-      apt.status !== 'ملغي'
-  );
-  if (slotTaken) {
-    setPortalMessage({ type: 'error', text: 'هذا التوقيت تم حجزه للتو، يرجى اختيار توقيت آخر متاح من الجدول.' });
-    return;
-  }
+        if (SUPABASE_URL && SUPABASE_KEY) {
+          fetch(
+            `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(
+              currentUser.email.toLowerCase()
+            )}`,
+            {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: SUPABASE_KEY,
+                Authorization: `Bearer ${SUPABASE_KEY}`,
+              },
+              // body: JSON.stringify({ my_appointments: [savedApt, ...myAppointments] }),
+              body: JSON.stringify({
+                my_patients: [savedPat, ...myRegisteredPatients],
+              }),
+            }
+          ).catch(() => {});
+        }
 
-  const patObj = patients.find((p: any) => p.name === selectedPatientForBook);
-  const srvObj = services.find((s: any) => s.name === selectedServiceForBook);
-
-  const newAptPayload = {
-    id: 'APT-' + Date.now().toString().slice(-5),
-    patientId: patObj?.id || 'PAT-PORTAL',
-    patientName: selectedPatientForBook,
-    phone: patObj?.phone || currentUser.phone,
-    doctor: selectedDoctorForBook,
-    service: selectedServiceForBook,
-    price: srvObj?.price || 300,
-    date: selectedDateForBook,
-    time: selectedTimeSlot,
-    status: 'قيد الانتظار',
-    source: 'بوابة المريض',
-  };
-
-  try {
-    // إرسال الحجز الجديد مباشرة إلى الـ API الخاص بصفحة الدكتور
-    let savedApt = newAptPayload;
-    if (typeof API_ENDPOINTS !== 'undefined' && API_ENDPOINTS.APPOINTMENTS) {
-      const res = await fetch(API_ENDPOINTS.APPOINTMENTS, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newAptPayload),
-      });
-      if (res.ok) {
-        savedApt = await res.json();
+        ///////////////////////
+        setSelectedPatientForBook(savedPat.name);
+        setNewPatientForm({
+          name: '',
+          phone: '',
+          age: '',
+          gender: 'ذكر',
+          notes: '',
+        });
+        setPortalMessage({
+          type: 'success',
+          text: `تم فتح ملف طبي للمريض "${savedPat.name}" وحفظه في قاعدة البيانات السحابية بنجاح!`,
+        });
+        setPortalTab('book');
+      } catch (err) {
+        setPortalMessage({
+          type: 'error',
+          text: 'حدث خطأ أثناء الاتصال بالـ API، يرجى المحاولة مرة أخرى.',
+        });
       }
-    }
+    };
 
-    const updatedApts = [savedApt, ...appointments];
-    setAppointments(updatedApts);
+    // 2. دالة تأكيد حجز الموعد من الجدول + حفظه في الـ API الخاص بالدكتور
+    const handleBookFromPortal = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setPortalMessage(null);
 
-    localStorage.setItem(storageAptsKey, JSON.stringify([savedApt, ...myAppointments]));
+      if (!selectedPatientForBook) {
+        setPortalMessage({
+          type: 'error',
+          text: 'يجب اختيار اسم المريض أولاً (أو تسجيل ملف مريض جديد قبل الحجز)!',
+        });
+        return;
+      }
+      if (!selectedServiceForBook) {
+        setPortalMessage({
+          type: 'error',
+          text: 'يرجى اختيار الخدمة المطلوبة!',
+        });
+        return;
+      }
+      if (!selectedTimeSlot) {
+        setPortalMessage({
+          type: 'error',
+          text: 'يرجى اختيار ساعة الموعد من جدول المواعيد المتاحة بالأسفل!',
+        });
+        return;
+      }
 
+      if (hasActiveUncompletedBooking(selectedPatientForBook)) {
+        setPortalMessage({
+          type: 'error',
+          text: `عفواً، المريض (${selectedPatientForBook}) لديه حجز نشط بالفعل! لا يمكن حجز موعد آخر لنفس المريض إلا بعد حضوره العيادة وتسجيل الزيارة والمتابعة لدى الطبيب. يمكنك تسجيل مريض آخر والحجز له.`,
+        });
+        return;
+      }
 
-    localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(updatedApts));
-    setSelectedTimeSlot('');
-    setPortalMessage({
-      type: 'success',
-      text: `تم حجز موعد للمريض "${selectedPatientForBook}" يوم ${selectedDateForBook} الساعة ${selectedTimeSlot} وحفظه في السحابة بنجاح!`,
+      const slotTaken = appointments.some(
+        (apt: any) =>
+          apt.date === selectedDateForBook &&
+          apt.time === selectedTimeSlot &&
+          apt.status !== 'ملغي'
+      );
+      if (slotTaken) {
+        setPortalMessage({
+          type: 'error',
+          text: 'هذا التوقيت تم حجزه للتو، يرجى اختيار توقيت آخر متاح من الجدول.',
+        });
+        return;
+      }
+
+      const patObj = patients.find(
+        (p: any) => p.name === selectedPatientForBook
+      );
+      const srvObj = services.find(
+        (s: any) => s.name === selectedServiceForBook
+      );
+
+      const newAptPayload = {
+        id: 'APT-' + Date.now().toString().slice(-5),
+        patientId: patObj?.id || 'PAT-PORTAL',
+        patientName: selectedPatientForBook,
+        phone: patObj?.phone || currentUser.phone,
+        doctor: selectedDoctorForBook,
+        service: selectedServiceForBook,
+        price: srvObj?.price || 300,
+        date: selectedDateForBook,
+        time: selectedTimeSlot,
+        status: 'قيد الانتظار',
+        source: 'بوابة المريض',
+      };
+
+      try {
+        // إرسال الحجز الجديد مباشرة إلى الـ API الخاص بصفحة الدكتور
+        let savedApt = newAptPayload;
+        if (
+          typeof API_ENDPOINTS !== 'undefined' &&
+          API_ENDPOINTS.APPOINTMENTS
+        ) {
+          const res = await fetch(API_ENDPOINTS.APPOINTMENTS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newAptPayload),
+          });
+          if (res.ok) {
+            savedApt = await res.json();
+          }
+        }
+
+        const updatedApts = [savedApt, ...appointments];
+        setAppointments(updatedApts);
+
+        localStorage.setItem(
+          storageAptsKey,
+          JSON.stringify([savedApt, ...myAppointments])
+        );
+
+        localStorage.setItem(
+          STORAGE_KEYS.APPOINTMENTS,
+          JSON.stringify(updatedApts)
+        );
+        setSelectedTimeSlot('');
+        setPortalMessage({
+          type: 'success',
+          text: `تم حجز موعد للمريض "${selectedPatientForBook}" يوم ${selectedDateForBook} الساعة ${selectedTimeSlot} وحفظه في السحابة بنجاح!`,
+        });
+        setPortalTab('appointments');
+      } catch (err) {
+        setPortalMessage({
+          type: 'error',
+          text: 'حدث خطأ أثناء حفظ الموعد في الـ API.',
+        });
+      }
+    };
+
+    /////////////////////
+
+    // ============================================================
+    // استبدل الـ return القديم كله (اللي بيبدأ بـ <div dir="rtl" className="min-h-screen bg-slate-950 ...>)
+    // بالكود ده. يبدأ من أول سطر const وينتهي بـ );  قبل القوس } اللي بيقفل if (currentUser.role === 'patient')
+    // ============================================================
+
+    const statusMeta = (s: string) =>
+      s === 'مؤكد'
+        ? { t: 'حجز مؤكد', c: 'ok' }
+        : s === 'مكتمل'
+        ? { t: 'تم الكشف', c: 'done' }
+        : s === 'Cancelled' || s === 'ملغي' || s === 'إلغاء'
+        ? { t: 'حجز ملغي', c: 'bad' }
+        : { t: 'قيد الانتظار', c: 'wait' };
+
+    const liveStatusOf = (apt: any) =>
+      appointments.find(
+        (a: any) =>
+          a.id === apt.id ||
+          (a.patientName === apt.patientName && a.date === apt.date)
+      )?.status || apt.status;
+
+    const nextApt = myAppointments.find((a: any) => {
+      const s = liveStatusOf(a);
+      return s === 'قيد الانتظار' || s === 'مؤكد';
     });
-    setPortalTab('appointments');
-  } catch (err) {
-    setPortalMessage({ type: 'error', text: 'حدث خطأ أثناء حفظ الموعد في الـ API.' });
-  }
-};
 
+    const selectedSrv = services.find(
+      (s: any) => s.name === selectedServiceForBook
+    );
+    const selectedPatLocked =
+      selectedPatientForBook &&
+      hasActiveUncompletedBooking(selectedPatientForBook);
 
-  /////////////////////
+    const tabs = [
+      { id: 'home', label: 'الخدمات', count: services.length },
+      {
+        id: 'patients',
+        label: 'ملفات المرضى',
+        count: myRegisteredPatients.length,
+      },
+      { id: 'book', label: 'حجز موعد', count: null },
+      { id: 'appointments', label: 'حجوزاتي', count: myAppointments.length },
+    ];
 
-  return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 text-white font-sans pb-16">
-      <div className="bg-gradient-to-l from-teal-900/50 via-slate-900 to-slate-950 border-b border-slate-800">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-600 text-slate-950 flex items-center justify-center shadow-lg shadow-teal-500/20">
-                <Stethoscope className="w-9 h-9" />
-              </div>
-              <div>
-                <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                  ✨ البوابة الذكية للمرضى والحجوزات الفورية
-                </span>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-2">
-                  أهلاً بك، {currentUser.name} 👋
-                </h1>
-                <p className="text-slate-400 text-xs mt-1">
-                  إدارة ملفات عائلتك الطبية، استعراض الخدمات، وحجز المواعيد المباشرة من جدول العيادة
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setPortalTab('book')}
-                className="px-5 py-3 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-teal-500/20 transition cursor-pointer"
-              >
-                📅 احجز موعداً الآن
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-3 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-xs transition cursor-pointer"
-              >
-                🚪 تسجيل الخروج
-              </button>
-            </div>
-            <FloatingChat patientId={currentUser ? (currentUser.email || currentUser.phone) : "test-user"} />
-
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-slate-800/80">
-            {[
-              { id: 'home', label: '✨ خدمات العيادة والأسعار', count: services.length },
-              { id: 'patients', label: '👥 تسجيل وملفات المرضى', count: myRegisteredPatients.length },
-              { id: 'book', label: '🕒 جدول المواعيد والحجز', count: null },
-              { id: 'appointments', label: '📋 حجوزاتي ومتابعة الزيارات', count: myAppointments.length },
-            ].map((t: any) => (
-              <button
-                key={t.id}
-                onClick={() => { setPortalTab(t.id as any); setPortalMessage(null); }}
-                className={`px-5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
-                  portalTab === t.id
-                    ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20'
-                    : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 border border-slate-800'
-                }`}
-              >
-                <span>{t.label}</span>
-                {t.count !== null && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] ${
-                    portalTab === t.id ? 'bg-slate-950 text-teal-400' : 'bg-slate-800 text-slate-400'
-                  }`}>
-                    {t.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
+    const renderSlots = (list: string[]) => (
+      <div className="pp-slots">
+        {list.map((slot) => {
+          const bookedApt = appointments.find(
+            (apt: any) =>
+              apt.date === selectedDateForBook &&
+              apt.time === slot &&
+              (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد')
+          );
+          const isBooked = !!bookedApt;
+          const isSelected = selectedTimeSlot === slot;
+          return (
+            <button
+              key={slot}
+              type="button"
+              disabled={isBooked}
+              onClick={() => setSelectedTimeSlot(slot)}
+              className={`pp-slot ${isSelected ? 'sel' : ''}`}
+            >
+              {slot}
+            </button>
+          );
+        })}
       </div>
+    );
 
-      <div className="max-w-6xl mx-auto px-6 mt-8 space-y-8">
-        {portalMessage && (
-          <div className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between ${
-            portalMessage.type === 'error'
-              ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-              : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-          }`}>
-            <span>{portalMessage.text}</span>
-            <button onClick={() => setPortalMessage(null)} className="text-slate-400 hover:text-white">✕</button>
-          </div>
-        )}
+    return (
+      <div dir="rtl" className="pp">
+        <FloatingChat
+          patientId={
+            currentUser ? currentUser.email || currentUser.phone : 'test-user'
+          }
+        />
 
-        {portalTab === 'home' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-extrabold text-white">🦷 خدمات العيادة التخصصية</h2>
-                <p className="text-xs text-slate-400 mt-1">اختر الخدمة المناسبة لك واحجز موعدك مباشرة من الجدول التفاعلي</p>
+        <header className="pp-top">
+          <div className="pp-top-in">
+            <div className="pp-brand">
+              <div className="pp-mark">
+                <Stethoscope size={19} />
               </div>
-              <button
-                onClick={() => setPortalTab('patients')}
-                className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-teal-400 text-xs font-bold hover:bg-slate-800"
-              >
-                + تسجيل ملف مريض جديد
+              <span className="t">عيادة الأسنان الذكية</span>
+            </div>
+            <nav className="pp-nav">
+              {tabs.map((t: any) => (
+                <button
+                  key={t.id}
+                  className={portalTab === t.id ? 'on' : ''}
+                  onClick={() => {
+                    setPortalTab(t.id as any);
+                    setPortalMessage(null);
+                  }}
+                >
+                  {t.label}
+                  {t.count !== null && (
+                    <span className="pp-badge">{t.count}</span>
+                  )}
+                </button>
+              ))}
+            </nav>
+            <div className="pp-user">
+              <span>{currentUser.name}</span>
+              <button className="pp-out" onClick={handleLogout}>
+                خروج
               </button>
             </div>
+          </div>
+        </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {services.map((srv: any) => (
-                <div
-                  key={srv.id}
-                  className="group bg-slate-900/90 border border-slate-800 hover:border-teal-500/50 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between shadow-xl"
+        <main className="pp-wrap">
+          {portalMessage && (
+            <div className={`pp-note ${portalMessage.type}`}>
+              <span>{portalMessage.text}</span>
+              <button onClick={() => setPortalMessage(null)} aria-label="إغلاق">
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* ===================== الخدمات ===================== */}
+          {portalTab === 'home' && (
+            <>
+              <section className="pp-hero">
+                <div className="pp-hero-main">
+                  <h1>أهلاً {currentUser.name}، ابتسامتك في أيدٍ أمينة</h1>
+                  <p>
+                    اختر الخدمة، وحدد الوقت المناسب من جدول العيادة، وتابع
+                    حجوزاتك من مكان واحد.
+                  </p>
+                  <button
+                    className="pp-cta"
+                    onClick={() => setPortalTab('book')}
+                  >
+                    احجز موعدك الآن
+                  </button>
+                </div>
+                <div className="pp-next">
+                  {nextApt ? (
+                    <>
+                      <small>موعدك القادم</small>
+                      <div className="big">
+                        {nextApt.service || nextApt.serviceName}
+                      </div>
+                      <div className="meta">
+                        <span>
+                          <Calendar size={14} /> {nextApt.date}
+                        </span>
+                        <span>
+                          <Clock size={14} /> {nextApt.time}
+                        </span>
+                        <span>
+                          <Users size={14} /> {nextApt.patientName}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <small>موعدك القادم</small>
+                      <div className="big">لا يوجد حجز نشط</div>
+                      <div className="meta">
+                        <span>اختر خدمة من القائمة وابدأ الحجز.</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </section>
+
+              <div className="pp-sec">
+                <div>
+                  <h2>خدمات العيادة</h2>
+                  <p>الأسعار بالجنيه المصري، والمدة التقريبية لكل جلسة.</p>
+                </div>
+                <button
+                  className="pp-ghost"
+                  onClick={() => setPortalTab('patients')}
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-500/10 text-teal-400 border border-teal-500/20">
-                        {srv.category || 'خدمة طبية'}
-                      </span>
-                      <span className="text-xs text-slate-400 flex items-center gap-1">
-                        ⏱ {srv.duration || '30 دقيقة'}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-extrabold text-white group-hover:text-teal-400 transition">
-                      {srv.name}
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                      رعاية طبية متكاملة بأحدث أجهزة طب الأسنان مع متابعة دقيقة لملفك الطبي.
-                    </p>
-                  </div>
+                  إضافة ملف مريض
+                </button>
+              </div>
 
-                  <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between">
+              <div className="pp-list">
+                {services.map((srv: any) => (
+                  <div key={srv.id} className="pp-srv">
                     <div>
-                      <span className="text-[10px] text-slate-400 block">تكلفة الجلسة</span>
-                      <span className="text-xl font-black text-teal-400">{srv.price} <small className="text-xs">ج.م</small></span>
+                      <h3>
+                        {srv.name}{' '}
+                        <span className="pp-chip">
+                          {srv.category || 'خدمة طبية'}
+                        </span>
+                      </h3>
+                      <p>
+                        <Clock size={13} /> {srv.duration || '30 دقيقة'}
+                      </p>
+                    </div>
+                    <div className="pp-price">
+                      {srv.price}
+                      <small>ج.م</small>
                     </div>
                     <button
+                      className="pp-btn"
                       onClick={() => {
                         setSelectedServiceForBook(srv.name);
                         setPortalTab('book');
                       }}
-                      className="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition cursor-pointer"
                     >
-                      احجز هذه الخدمة ←
+                      احجز
                     </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                ))}
+              </div>
+            </>
+          )}
 
-        {portalTab === 'patients' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-3xl p-6">
-              <h3 className="text-base font-extrabold text-white mb-1">➕ فتح ملف مريض جديد</h3>
-              <p className="text-xs text-slate-400 mb-5">
-                يجب تسجيل ملف المريض أولاً قبل حجز موعد له (يمكنك تسجيل نفسك أو أي فرد من عائلتك).
-              </p>
-
-              <form onSubmit={handleAddPatientFromPortal} className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-bold">اسم المريض الثلاثي *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: أحمد محمد علي"
-                    value={newPatientForm.name}
-                    onChange={(e) => setNewPatientForm({ ...newPatientForm, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-bold">رقم الهاتف *</label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="01012345678"
-                    value={newPatientForm.phone}
-                    onChange={(e) => setNewPatientForm({ ...newPatientForm, phone: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-bold">السن</label>
+          {/* ===================== ملفات المرضى ===================== */}
+          {portalTab === 'patients' && (
+            <div className="pp-grid2">
+              <div className="pp-card">
+                <h3>فتح ملف مريض جديد</h3>
+                <p className="sub">
+                  سجّل ملف المريض أولاً قبل الحجز. يمكنك تسجيل نفسك أو أي فرد من
+                  عائلتك.
+                </p>
+                <form onSubmit={handleAddPatientFromPortal} className="pp-f">
+                  <label>
+                    اسم المريض الثلاثي *
                     <input
-                      type="number"
-                      placeholder="28"
-                      value={newPatientForm.age}
-                      onChange={(e) => setNewPatientForm({ ...newPatientForm, age: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+                      className="pp-in"
+                      type="text"
+                      required
+                      placeholder="أحمد محمد علي"
+                      value={newPatientForm.name}
+                      onChange={(e) =>
+                        setNewPatientForm({
+                          ...newPatientForm,
+                          name: e.target.value,
+                        })
+                      }
                     />
+                  </label>
+                  <label>
+                    رقم الهاتف *
+                    <input
+                      className="pp-in"
+                      type="tel"
+                      required
+                      placeholder="01012345678"
+                      value={newPatientForm.phone}
+                      onChange={(e) =>
+                        setNewPatientForm({
+                          ...newPatientForm,
+                          phone: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <div className="pp-row2">
+                    <label>
+                      السن
+                      <input
+                        className="pp-in"
+                        type="number"
+                        placeholder="28"
+                        value={newPatientForm.age}
+                        onChange={(e) =>
+                          setNewPatientForm({
+                            ...newPatientForm,
+                            age: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      النوع
+                      <select
+                        className="pp-in"
+                        value={newPatientForm.gender}
+                        onChange={(e) =>
+                          setNewPatientForm({
+                            ...newPatientForm,
+                            gender: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="ذكر">ذكر</option>
+                        <option value="أنثى">أنثى</option>
+                      </select>
+                    </label>
                   </div>
+                  <label>
+                    ملاحظات صحية أو شكوى
+                    <textarea
+                      className="pp-in"
+                      rows={3}
+                      placeholder="أي حساسية أو أمراض مزمنة..."
+                      value={newPatientForm.notes}
+                      onChange={(e) =>
+                        setNewPatientForm({
+                          ...newPatientForm,
+                          notes: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <button type="submit" className="pp-btn wide">
+                    حفظ الملف والانتقال للحجز
+                  </button>
+                </form>
+              </div>
+
+              <div>
+                <div className="pp-sec">
                   <div>
-                    <label className="block text-slate-300 mb-1 font-bold">النوع</label>
+                    <h2>ملفاتك المسجلة</h2>
+                  </div>
+                </div>
+                {myRegisteredPatients.length === 0 ? (
+                  <div className="pp-empty">
+                    لم تسجّل أي ملف مريض بعد.
+                    <br />
+                    املأ النموذج المجاور لتتمكن من الحجز.
+                  </div>
+                ) : (
+                  <div className="pp-plist">
+                    {myRegisteredPatients.map((pat: any, idx: number) => {
+                      const activeBooking = appointments.find(
+                        (apt: any) =>
+                          apt.patientName?.trim().toLowerCase() ===
+                            pat.name.trim().toLowerCase() &&
+                          (apt.status === 'قيد الانتظار' ||
+                            apt.status === 'مؤكد')
+                      );
+                      const hasActive = activeBooking ? true : false;
+                      const isAcceptedByDoctor = patients.some((p: any) => {
+                        if (!p.phone || !pat.phone) return false;
+                        const cleanPhone = (num: any) =>
+                          String(num)
+                            .replace(/[٠-٩]/g, (d: any) =>
+                              String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+                            )
+                            .replace(/\D/g, '');
+                        return cleanPhone(p.phone) === cleanPhone(pat.phone);
+                      });
+
+                      return isAcceptedByDoctor ? (
+                        <div key={`${pat.id}-${idx}`} className="pp-pcard">
+                          <div className="pp-phead">
+                            <div className="pp-av">
+                              {String(pat.name).trim().charAt(0)}
+                            </div>
+                            <div>
+                              <h3>{pat.name}</h3>
+                              <div
+                                className="pp-pmeta"
+                                dir="ltr"
+                                style={{ textAlign: 'right' }}
+                              >
+                                {pat.phone} · {pat.age || '-'}
+                              </div>
+                            </div>
+                            {hasActive && (
+                              <span
+                                className={`pp-pill ${
+                                  activeBooking?.status === 'مؤكد'
+                                    ? 'ok'
+                                    : 'wait'
+                                }`}
+                              >
+                                {activeBooking?.status === 'مؤكد'
+                                  ? 'حجز مؤكد'
+                                  : 'قيد الانتظار'}
+                              </span>
+                            )}
+                          </div>
+                          {pat.notes && (
+                            <div className="pp-pnote">{pat.notes}</div>
+                          )}
+                          <button
+                            className="pp-btn"
+                            disabled={hasActive}
+                            onClick={() => {
+                              setSelectedPatientForBook(pat.name);
+                              setPortalTab('book');
+                            }}
+                          >
+                            {hasActive
+                              ? 'لا يمكن الحجز قبل إتمام الزيارة'
+                              : 'حجز موعد لهذا المريض'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div key={`${pat.id}-${idx}`} className="pp-pcard gone">
+                          <div>
+                            <h3>{pat.name}</h3>
+                            <div className="pp-pmeta" dir="ltr">
+                              {pat.phone}
+                            </div>
+                          </div>
+                          <div>
+                            <b style={{ color: 'var(--red)', fontSize: 13 }}>
+                              تم رفض أو حذف ملف المريض
+                            </b>
+                            <p className="pp-pmeta" style={{ marginTop: 4 }}>
+                              قامت العيادة بإلغاء تسجيل هذا المريض.
+                            </p>
+                          </div>
+                          <div className="pp-acts">
+                            <button
+                              className="pp-danger"
+                              onClick={async (e) => {
+                                const card = e.currentTarget.closest(
+                                  '.pp-pcard'
+                                ) as HTMLElement;
+                                if (card) card.style.display = 'none';
+                                const clean = (num: any) =>
+                                  String(num || '')
+                                    .replace(/[٠-٩]/g, (d: any) =>
+                                      String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+                                    )
+                                    .replace(/\D/g, '');
+                                const targetPhone = clean(pat.phone);
+                                const storageKey = `clinic_my_patients_${
+                                  currentUser?.email || currentUser?.phone
+                                }`;
+                                const savedList = JSON.parse(
+                                  localStorage.getItem(storageKey) || '[]'
+                                );
+                                const updatedList = savedList.filter(
+                                  (item: any) => {
+                                    const isSamePhone =
+                                      item.phone &&
+                                      clean(item.phone) === targetPhone;
+                                    const isSameName =
+                                      item.name && item.name === pat.name;
+                                    return !(isSamePhone || isSameName);
+                                  }
+                                );
+                                localStorage.setItem(
+                                  storageKey,
+                                  JSON.stringify(updatedList)
+                                );
+                                if (
+                                  SUPABASE_URL &&
+                                  SUPABASE_KEY &&
+                                  currentUser?.email
+                                ) {
+                                  try {
+                                    const userEmail = currentUser.email
+                                      .trim()
+                                      .toLowerCase();
+                                    await fetch(
+                                      `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(
+                                        userEmail
+                                      )}`,
+                                      {
+                                        method: 'PATCH',
+                                        headers: {
+                                          apikey: SUPABASE_KEY,
+                                          Authorization: `Bearer ${SUPABASE_KEY}`,
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                          my_patients: updatedList,
+                                        }),
+                                      }
+                                    );
+                                  } catch (err) {
+                                    console.error(
+                                      'Supabase Delete Error:',
+                                      err
+                                    );
+                                  }
+                                }
+                              }}
+                            >
+                              حذف السجل
+                            </button>
+                            <button
+                              className="pp-soft"
+                              onClick={async () => {
+                                try {
+                                  const { id, ...patientData } = pat;
+                                  const response = await fetch(
+                                    API_ENDPOINTS.PATIENTS,
+                                    {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({
+                                        ...patientData,
+                                        notes:
+                                          pat.notes ||
+                                          'تم إعادة التسجيل من بوابة المريض',
+                                        createdAt: new Date()
+                                          .toISOString()
+                                          .split('T')[0],
+                                      }),
+                                    }
+                                  );
+                                  if (response.ok) {
+                                    const newPatient = await response.json();
+                                    setPatients((prev: any) => [
+                                      ...prev,
+                                      newPatient,
+                                    ]);
+                                  } else {
+                                    alert(
+                                      'حدث خطأ أثناء إرسال البيانات للعيادة'
+                                    );
+                                  }
+                                } catch (error) {
+                                  alert('حدث خطأ، تأكد من اتصالك بالإنترنت');
+                                }
+                              }}
+                            >
+                              إعادة تسجيل
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ===================== الحجز ===================== */}
+          {portalTab === 'book' && (
+            <form onSubmit={handleBookFromPortal} className="pp-book">
+              <div>
+                <div className="pp-sec">
+                  <div>
+                    <h2>حجز موعد</h2>
+                    <p>
+                      لكل مريض حجز نشط واحد، حتى يحضر الكشف ويسجّل الطبيب
+                      زيارته.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="pp-ghost"
+                    onClick={() => setPortalTab('patients')}
+                  >
+                    مريض جديد
+                  </button>
+                </div>
+
+                <div className="pp-step">
+                  <h3>
+                    <i>1</i> المريض والخدمة
+                  </h3>
+                  <div className="pp-row2">
                     <select
-                      value={newPatientForm.gender}
-                      onChange={(e) => setNewPatientForm({ ...newPatientForm, gender: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+                      className="pp-in"
+                      required
+                      value={selectedPatientForBook}
+                      onChange={(e) =>
+                        setSelectedPatientForBook(e.target.value)
+                      }
                     >
-                      <option value="ذكر">ذكر</option>
-                      <option value="أنثى">أنثى</option>
+                      <option value="">اختر المريض</option>
+                      {myRegisteredPatients.map((p: any, idx: number) => {
+                        const locked = hasActiveUncompletedBooking(p.name);
+                        return (
+                          <option key={`${p.id}-${idx}`} value={p.name}>
+                            {p.name}
+                            {locked ? ' (لديه حجز نشط)' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <select
+                      className="pp-in"
+                      required
+                      value={selectedServiceForBook}
+                      onChange={(e) =>
+                        setSelectedServiceForBook(e.target.value)
+                      }
+                    >
+                      <option value="">اختر الخدمة</option>
+                      {services.map((s: any) => (
+                        <option key={s.id} value={s.name}>
+                          {s.name} ({s.price} ج.م)
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 font-bold">ملاحظات صحية أو شكوى</label>
-                  <textarea
-                    rows={2}
-                    placeholder="أي حساسية أو أمراض مزمنة..."
-                    value={newPatientForm.notes}
-                    onChange={(e) => setNewPatientForm({ ...newPatientForm, notes: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold transition cursor-pointer"
-                >
-                  حفظ ملف المريض والانتقال للحجز
-                </button>
-              </form>
-            </div>
 
-            <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6">
-              <h3 className="text-base font-extrabold text-white mb-4">👥 ملفات المرضى المسجلة لديك</h3>
-              {myRegisteredPatients.length === 0 ? (
-                <div className="text-center py-12 bg-slate-950/60 rounded-2xl border border-slate-800/80">
-                  <p className="text-sm text-slate-400">لم تقم بتسجيل أي ملف مريض بعد.</p>
-                  <p className="text-xs text-slate-500 mt-1">سجّل ملف المريض من النموذج الجانبي لتتمكن من الحجز له.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {myRegisteredPatients.map((pat: any , idx: number) => {
-
-//const activeBooking = appointments.find(apt => 
- // apt.patientName?.trim().toLowerCase() === pat.name.trim().toLowerCase() && 
- // (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد')
-//);
-
-                   // const hasActive = hasActiveUncompletedBooking(pat.name);
-                   const activeBooking = appointments.find((apt: any) => apt.patientName?.trim().toLowerCase() === pat.name.trim().toLowerCase() && (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد'));
-                   const hasActive = activeBooking ? true : false;
-                   // return (
-                     // <div key={pat.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
-                      //  <div>
-                       //   <div className="flex items-center justify-between">
-                        //    <span className="font-extrabold text-sm text-white">{pat.name}</span>
-                         //   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          //   // hasActive ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
-                        //     hasActive ? (activeBooking?.status === 'مؤكد' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300') : 'bg-slate-800 text-slate-400'
-                         //   }`}>
-                            //</div>  {hasActive ? (activeBooking?.status === 'مؤكد' ? 'حجز مؤكد ✅' : 'لديه حجز قيد الانتظار') : 'متاح لحجز موعد'}
-//</div>
-  //</div>                          </span>
-    //                      </div>
-      //                    <p className="text-xs text-slate-400 mt-2">📱 الهاتف: {pat.phone} | السن: {pat.age || '-'}</p>
-        //                  {pat.notes && <p className="text-[11px] text-slate-500 mt-1">📝 {pat.notes}</p>}
-          //              </div>
-//
-  //                      <button
-    //                      onClick={() => {
-      ///                      setSelectedPatientForBook(pat.name);
-         //                   setPortalTab('book');
-           //               }}
-             //             disabled={hasActive}
-               //           className={`mt-4 w-full py-2.5 rounded-xl text-xs font-bold transition ${
-                 //           hasActive
-                   //           ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                     //         : 'bg-teal-500/20 text-teal-300 hover:bg-teal-500 hover:text-slate-950 cursor-pointer'
-                       //   }`}
-                       // >
-                        //</div>  {hasActive ? '⏳ لا يمكن الحجز قبل إتمام الزيارة الحالية' : '📅 حجز موعد لهذا المريض'}
-                      //</div>  </button>
-                     // </div>
-                   // );
-                   return (
-                    <div key={`${pat.id}-${idx}`} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col gap-4">
-                      
-                      {/* متغير عشان نعرف هل الدكتور حذف المريض ده ولا لسه موجود */}
-                      {(() => {
-                        //const isAcceptedByDoctor = patients.some((p: any) => String(p.id) === String(pat.id) || p.phone === pat.phone);
-                        const isAcceptedByDoctor = patients.some((p: any) => {
-                          if (!p.phone || !pat.phone) return false;
-                          
-                          // دالة ذكية لتحويل الأرقام العربية (٠١٢) إلى إنجليزية (012) وحذف أي مسافات
-                          const cleanPhone = (num: any) => 
-                            String(num)
-                              .replace(/[٠-٩]/g, (d: any) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-                              .replace(/\D/g, '');
-                              
-                          return cleanPhone(p.phone) === cleanPhone(pat.phone);
-                        });
-                        return isAcceptedByDoctor ? (
-                          // --- الحالة الأولى: المريض موجود عند الدكتور (طبيعي) ---
-                          <>
-                            <div>
-                              <div className="flex items-center justify-between">
-                                <span className="font-extrabold text-sm text-white">{pat.name}</span>
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                                  hasActive ? (activeBooking?.status === 'مؤكد' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300') : 'hidden'
-                                }`}>
-                                  {hasActive ? (activeBooking?.status === 'مؤكد' ? 'حجز مؤكد' : 'لديه حجز قيد الانتظار') : ''}
-                                </span>
-                              </div>
-                              <p className="text-xs text-slate-400 mt-2">الهاتف: {pat.phone} | السن: {pat.age || '-'}</p>
-                              {pat.notes && <p className="text-[11px] text-slate-500 mt-1">{pat.notes}</p>}
-                            </div>
-                  
-                            <button
-                              onClick={() => {
-                                setSelectedPatientForBook(pat.name);
-                                setPortalTab('book');
-                              }}
-                              disabled={hasActive}
-                              className={`mt-4 w-full py-2.5 rounded-xl text-xs font-bold transition-all ${
-                                hasActive 
-                                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                                  : 'bg-teal-500/20 text-teal-300 hover:bg-teal-500 hover:text-slate-950 cursor-pointer'
-                              }`}
-                            >
-                              {hasActive ? 'لا يمكن الحجز قبل إتمام الزيارة الحالية' : 'حجز موعد لهذا المريض'}
-                            </button>
-                          </>
-                        ) : (
-                          // --- الحالة التانية: الدكتور حذف/رفض المريض ---
-                          <div className="text-center py-2">
-                            <div className="mb-3 text-rose-500 flex justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-x"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/></svg>
-                            </div>
-                            <h3 className="text-white font-extrabold text-sm mb-1">{pat.name}</h3>
-<p className="text-xs text-slate-400 mb-3">{pat.phone}</p>
-                            <h4 className="text-rose-400 text-sm font-bold mb-1">تم رفض أو حذف ملف المريض</h4>
-                            <p className="text-[11px] text-slate-500 mb-4">قامت العيادة بإلغاء تسجيل هذا المريض.</p>
-                            
-                            <div className="flex gap-2">
-                            <button
-              onClick={async (e) => {
-                // 1. إخفاء الكارت من الشاشة فوراً بنعومة
-                const card = e.currentTarget.closest('.p-5') as HTMLElement;
-                if (card) card.style.display = 'none';
-
-                // دالة توحيد الأرقام (عربي لإنجليزي)
-                const clean = (num: any) =>
-                  String(num || '')
-                    .replace(/[٠-٩]/g, (d: any) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-                    .replace(/\D/g, '');
-                const targetPhone = clean(pat.phone);
-
-                // 2. مسح المريض من localStorage بتاع الحساب الحالي
-                const storageKey = `clinic_my_patients_${currentUser?.email || currentUser?.phone}`;
-                const savedList = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                const updatedList = savedList.filter((item: any) => {
-                  const isSamePhone = item.phone && clean(item.phone) === targetPhone;
-                  const isSameName = item.name && item.name === pat.name;
-                  return !(isSamePhone || isSameName);
-                });
-                localStorage.setItem(storageKey, JSON.stringify(updatedList));
-
-                // 3. مسح المريض من Supabase نهائياً
-                if (SUPABASE_URL && SUPABASE_KEY && currentUser?.email) {
-                  try {
-                    const userEmail = currentUser.email.trim().toLowerCase();
-                    await fetch(
-                      `${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(userEmail)}`,
-                      {
-                        method: 'PATCH',
-                        headers: {
-                          apikey: SUPABASE_KEY,
-                          Authorization: `Bearer ${SUPABASE_KEY}`,
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ my_patients: updatedList }),
-                      }
-                    );
-                  } catch (err) {
-                    console.error('Supabase Delete Error:', err);
-                  }
-                }
-              }}
-              className="flex-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 py-2 rounded-lg text-[11px] font-bold transition-colors"
-            >
-              حذف السجل
-            </button>
-                              <button
-              onClick={async () => {
-                try {
-                  // 1. تجهيز البيانات 
-                  const { id, ...patientData } = pat;
-
-                  // 2. إرسال البيانات فوراً لـ MockAPI
-                  const response = await fetch(API_ENDPOINTS.PATIENTS, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      ...patientData,
-                      notes: pat.notes || 'تم إعادة التسجيل من بوابة المريض',
-                      createdAt: new Date().toISOString().split('T')[0]
-                    })
-                  });
-
-                  if (response.ok) {
-                    // 3. التحديث السحري اللحظي (بدون ريفرش)
-                    const newPatient = await response.json(); // بناخد المريض الجديد بالـ ID بتاعه
-                    setPatients((prev: any) => [...prev, newPatient]); // بنضيفه في الـ State فوراً
-                  } else {
-                    alert('حدث خطأ أثناء إرسال البيانات للعيادة');
-                  }
-                } catch (error) {
-                  alert('حدث خطأ، تأكد من اتصالك بالإنترنت');
-                }
-              }}
-              className="flex-1 bg-slate-800 text-slate-300 hover:bg-slate-700 py-2 rounded-lg text-[11px] font-bold transition-colors"
-            >
-              إعادة تسجيل
-            </button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  );
-
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {portalTab === 'book' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-800">
-              <div>
-                <h2 className="text-xl font-extrabold text-white">🕒 حجز موعد من جدول العيادة المباشر</h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  ملاحظة: كل مريض يحق له حجز موعد واحد فقط حتى يحضر العيادة ويسجل الطبيب زيارته في قسم المتابعة.
-                </p>
-              </div>
-              <button
-                onClick={() => setPortalTab('patients')}
-                className="px-4 py-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs font-bold hover:bg-teal-500/20"
-              >
-                + تسجيل مريض جديد غير موجود بالقائمة
-              </button>
-            </div>
-
-            <form onSubmit={handleBookFromPortal} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                <div>
-                  <label className="block text-slate-300 mb-2 font-bold">1. اختر اسم المريض المسجل *</label>
-                  <select
-                    required
-                    value={selectedPatientForBook}
-                    onChange={(e) => setSelectedPatientForBook(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold"
-                  >
-                    <option value="">-- اختر مريضاً من ملفاتك --</option>
-                    {myRegisteredPatients.map((p: any , idx: number) => {
-                      const locked = hasActiveUncompletedBooking(p.name);
-                      return (
-                        <option key={`${p.id}-${idx}`} value={p.name}>
-                          {p.name} {locked ? '(لديه موعد نشط - ينتظر الكشف)' : '(متاح للحجز ✅)'}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-2 font-bold">2. اختر الخدمة الطبية *</label>
-                  <select
-                    required
-                    value={selectedServiceForBook}
-                    onChange={(e) => setSelectedServiceForBook(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold"
-                  >
-                    <option value="">-- اختر الخدمة --</option>
-                    {services.map((s: any) => (
-                      <option key={s.id} value={s.name}>
-                        {s.name} ({s.price} ج.م)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-2 font-bold">3. اختر تاريخ اليوم لعرض الجدول *</label>
+                <div className="pp-step">
+                  <h3>
+                    <i>2</i> اليوم
+                  </h3>
                   <input
+                    className="pp-in"
+                    style={{ maxWidth: 240 }}
                     type="date"
                     required
                     min={new Date().toISOString().split('T')[0]}
@@ -2291,1677 +2598,572 @@ const handleBookFromPortal = async (e: React.FormEvent) => {
                       setSelectedDateForBook(e.target.value);
                       setSelectedTimeSlot('');
                     }}
-                    className="w-full px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold"
                   />
+                </div>
+
+                <div className="pp-step">
+                  <h3>
+                    <i>3</i> الوقت المتاح
+                  </h3>
+                  <div className="pp-period">الصباح والظهر</div>
+                  {renderSlots(CLINIC_TIME_SLOTS.slice(0, 8))}
+                  <div className="pp-period">المساء</div>
+                  {renderSlots(CLINIC_TIME_SLOTS.slice(8))}
                 </div>
               </div>
 
-              {selectedPatientForBook && hasActiveUncompletedBooking(selectedPatientForBook) && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold">
-                  ⚠️ تنبيه: المريض ({selectedPatientForBook}) لديه حجز قادم لم يتم الكشف عليه بعد في سجل زيارات الطبيب! لا يمكن حجز موعد ثانٍ له إلا بعد إتمام زيارته الحالية، أو يمكنك اختيار/تسجيل مريض آخر.
-                </div>
-              )}
-
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-xs font-bold text-slate-300">
-                    4. جدول مواعيد يوم ({selectedDateForBook}) - اختر التوقيت المتاح:
-                  </label>
-                  <div className="flex items-center gap-4 text-[11px]">
-                    <span className="flex items-center gap-1.5 text-emerald-400">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> متاح للحجز
-                    </span>
-                    <span className="flex items-center gap-1.5 text-rose-400">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> محجوز (غير متاح)
-                    </span>
+              <aside className="pp-card pp-sum">
+                <h3>ملخص الحجز</h3>
+                <dl>
+                  <div>
+                    <dt>المريض</dt>
+                    <dd className={selectedPatientForBook ? '' : 'none'}>
+                      {selectedPatientForBook || 'لم يُحدد'}
+                    </dd>
                   </div>
-                </div>
+                  <div>
+                    <dt>الخدمة</dt>
+                    <dd className={selectedServiceForBook ? '' : 'none'}>
+                      {selectedServiceForBook
+                        ? `${selectedServiceForBook}${
+                            selectedSrv ? ` · ${selectedSrv.price} ج.م` : ''
+                          }`
+                        : 'لم تُحدد'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>الطبيب</dt>
+                    <dd>{selectedDoctorForBook}</dd>
+                  </div>
+                  <div>
+                    <dt>الموعد</dt>
+                    <dd className={selectedTimeSlot ? '' : 'none'}>
+                      {selectedTimeSlot
+                        ? `${selectedDateForBook} · ${selectedTimeSlot}`
+                        : 'اختر وقتاً من الجدول'}
+                    </dd>
+                  </div>
+                </dl>
+                {selectedPatLocked && (
+                  <div className="pp-warn">
+                    المريض ({selectedPatientForBook}) لديه حجز لم يُكشف عليه
+                    بعد. اختر مريضاً آخر أو انتظر إتمام الزيارة.
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  className="pp-btn wide"
+                  disabled={
+                    !selectedPatientForBook ||
+                    hasActiveUncompletedBooking(selectedPatientForBook)
+                  }
+                >
+                  تأكيد الحجز
+                </button>
+              </aside>
+            </form>
+          )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                  {CLINIC_TIME_SLOTS.map((slot) => {
-                    //const bookedApt = appointments.find(
-                     // (apt: any) =>
-                      //  apt.date === selectedDateForBook &&
-                     //   apt.time === slot &&
-                    //   apt.status !== 'ملغي'
-                   // );
-                  //  const isBooked = Boolean(bookedApt);
-                  const bookedApt = appointments.find((apt: any) => 
-  apt.date === selectedDateForBook && 
-  apt.time === slot && 
-  (apt.status === 'قيد الانتظار' || apt.status === 'مؤكد')
-);
-const isBooked = !!bookedApt;
-                    
-                    const isSelected = selectedTimeSlot === slot;
+          {/* ===================== حجوزاتي ===================== */}
+          {portalTab === 'appointments' && (
+            <>
+              <div className="pp-sec">
+                <div>
+                  <h2>حجوزاتي</h2>
+                  <p>حالة كل حجز وزيارة، محدّثة من سجل العيادة.</p>
+                </div>
+              </div>
+              {myAppointments.length === 0 ? (
+                <div className="pp-empty">
+                  لا توجد حجوزات حتى الآن.
+                  <br />
+                  ابدأ بحجز أول موعد من تبويب «حجز موعد».
+                </div>
+              ) : (
+                <div className="pp-tl">
+                  {myAppointments.map((apt: any) => {
+                    const aptKey = `${apt.patientName}-${apt.date}-${apt.time}`;
+                    const completedHistory = JSON.parse(
+                      localStorage.getItem('clinic_completed_apts') || '[]'
+                    );
+                    const isVisitedNow =
+                      isAppointmentCompletedInVisits(apt) ||
+                      apt.status === 'مكتمل';
+                    if (isVisitedNow && !completedHistory.includes(aptKey)) {
+                      completedHistory.push(aptKey);
+                      localStorage.setItem(
+                        'clinic_completed_apts',
+                        JSON.stringify(completedHistory)
+                      );
+                    }
+                    const visited =
+                      isVisitedNow || completedHistory.includes(aptKey);
+                    const meta = visited
+                      ? { t: 'تمت الزيارة', c: 'done' }
+                      : statusMeta(liveStatusOf(apt));
 
                     return (
-                      <button
-                        key={slot}
-                        type="button"
-                        disabled={isBooked}
-                        onClick={() => setSelectedTimeSlot(slot)}
-                        className={`py-3 px-3 rounded-xl text-xs font-bold border transition flex flex-col items-center justify-center gap-1 ${
-                          isBooked
-                            ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 opacity-60 cursor-not-allowed'
-                            : isSelected
-                            ? 'bg-teal-500 border-teal-400 text-slate-950 shadow-lg shadow-teal-500/30 scale-105 cursor-pointer'
-                            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 cursor-pointer'
-                        }`}
-                      >
-                        <span>{slot}</span>
-                        <span className="text-[10px] font-normal">
-                          {isBooked ? '❌ غير متاح' : isSelected ? '✓ تم الاختيار' : '🟢 متاح'}
+                      <div key={apt.id} className="pp-apt">
+                        <div className="pp-date">
+                          <b>{apt.date}</b>
+                          <span>{apt.time}</span>
+                        </div>
+                        <div>
+                          <h3>{apt.service || apt.serviceName}</h3>
+                          <p>
+                            {apt.patientName} · {apt.doctor || 'د. طارق السعيد'}
+                            {visited ? ' · يمكنه الحجز مجدداً' : ''}
+                          </p>
+                        </div>
+                        <span
+                          className={`pp-pill ${meta.c}`}
+                          style={{ marginRight: 0 }}
+                        >
+                          {meta.t}
                         </span>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
-              </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+    );
+  }
 
-              <button
-                type="submit"
-                disabled={!selectedPatientForBook || hasActiveUncompletedBooking(selectedPatientForBook)}
-                className="w-full py-4 rounded-2xl bg-teal-500 hover:bg-teal-400 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-extrabold text-sm transition cursor-pointer"
-              >
-                تأكيد حجز الموعد في الجدول
-              </button>
-            </form>
-          </div>
-        )}
+  ///////////////////////////////////////////////////////
 
-        {portalTab === 'appointments' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
-            <h2 className="text-lg font-extrabold text-white mb-4">📋 سجل حجوزاتك وحالة الكشف والزيارات</h2>
-            {myAppointments.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-10 bg-slate-950 rounded-2xl">
-                لا توجد حجوزات مسجلة حتى الآن.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {myAppointments.map((apt: any) => {
-                 // const visited = isAppointmentCompletedInVisits(apt);
-                 const aptKey = `${apt.patientName}-${apt.date}-${apt.time}`;
-const completedHistory = JSON.parse(localStorage.getItem('clinic_completed_apts') || '[]');
-const isVisitedNow = isAppointmentCompletedInVisits(apt) || apt.status === 'مكتمل';
+   // ============================================================
+  // استبدل الـ return الأخير في App (اللي بيبدأ بـ <div dir="rtl" className="min-h-screen bg-[#f3f5f1] ...>)
+  // لحد آخر ); قبل القوس } اللي بيقفل function App.
+  // الصق الكود ده مكانه من أول const todayStr لحد );
+  // ============================================================
 
-if (isVisitedNow && !completedHistory.includes(aptKey)) {
-  completedHistory.push(aptKey);
-  localStorage.setItem('clinic_completed_apts', JSON.stringify(completedHistory));
-}
+  const todayStr = new Date().toISOString().split('T')[0];
+  const pillOf = (s: string) => (s === 'مؤكد' ? 'ok' : s === 'مكتمل' ? 'done' : s === 'ملغي' ? 'bad' : 'wait');
+  const pendingList = appointments.filter((a: any) => a.status === 'قيد الانتظار');
+  const recentList = appointments.slice(0, 6);
 
-const visited = isVisitedNow || completedHistory.includes(aptKey);
+  const navItems = [
+    { id: 'dashboard', label: 'لوحة التحكم', icon: <LayoutGrid size={18} />, count: null },
+    { id: 'appointments', label: 'المواعيد', icon: <Calendar size={18} />, count: appointments.filter((a: any) => a.status !== 'مكتمل').length },
+    { id: 'patients', label: 'المرضى', icon: <Users size={18} />, count: patients.length },
+    { id: 'visits', label: 'الزيارات والتحصيل', icon: <Stethoscope size={18} />, count: visits.length },
+    { id: 'services', label: 'الخدمات والأسعار', icon: <Sparkles size={18} />, count: services.length },
+  ];
 
-                  return (
-                    <div
-                      key={apt.id}
-                      className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-base text-white">المريض: {apt.patientName}</span>
-                          <span className="text-xs text-teal-400 font-bold">({apt.service})</span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                          📅 التاريخ: {apt.date} | 🕒 الساعة: {apt.time} | 👨‍⚕️ {apt.doctor || 'د. طارق السعيد'}
-                        </p>
-                      </div>
+  const subtitles: any = {
+    dashboard: 'نظرة سريعة على نشاط العيادة اليوم',
+    appointments: 'تأكيد الحجوزات وتحديث حالتها',
+    patients: 'ملفات المرضى وبياناتهم',
+    visits: 'الزيارات المكتملة والمبالغ المحصلة',
+    services: 'الخدمات المعتمدة وأسعارها',
+  };
 
-                      <div className="flex items-center gap-3">
-                        {visited ? (
-                          <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                            ✅ حضر العيادة وتم تسجيل الزيارة (يمكنه الحجز مجدداً)
-                          </span>
-                       // ) : (
-                         // <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                           // ⏳ حجز نشط ({apt.status || 'بانتظار حضور المريض للكشف'})
-                          //</span>
-                          ) : (() => {
-                            const liveStatus = appointments.find((a: any) => a.id === apt.id || (a.patientName === apt.patientName && a.date === apt.date))?.status || apt.status;
-                            
-                            return (
-                              <span className={`px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-2 w-fit ${
-                                liveStatus === 'مؤكد' ? 'bg-emerald-500/20 text-emerald-400' :
-                                liveStatus === 'مكتمل' ? 'bg-blue-500/20 text-blue-400' :
-                                (liveStatus === 'Cancelled' || liveStatus === 'ملغي' || liveStatus === 'إلغاء') ? 'bg-rose-500/20 text-rose-400' :
-                                'bg-amber-500/20 text-amber-400'
-                              }`}>
-                                {liveStatus === 'مؤكد' ? '✅ حجز مؤكد' :
-                                 liveStatus === 'مكتمل' ? '🏁 كشف مكتمل' :
-                                 (liveStatus === 'Cancelled' || liveStatus === 'ملغي' || liveStatus === 'إلغاء') ? '❌ حجز ملغي' :
-                                 '⏳ قيد الانتظار'}
-                              </span>
-                            );
-                          })()}
-                       
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+  const shell = (title: string, onClose: () => void, body: any) => (
+    <div className="dd-modal">
+      <div className="dd-dialog">
+        <div className="dd-dhead">
+          <h3>{title}</h3>
+          <button type="button" className="dd-x" onClick={onClose} aria-label="إغلاق">✕</button>
+        </div>
+        {body}
       </div>
     </div>
   );
-}
 
+  const field = (label: string, el: any) => <label className="dd-fl">{label}{el}</label>;
 
-
-
-
-///////////////////////////////////////////////////////
-
-
-
+  const aptActions = (app: any) => (
+    <div className="dd-ops">
+      {app.status !== 'مؤكد' && <button className="dd-btn sm ok" onClick={() => handleStatusUpdate(app, 'مؤكد')}>تأكيد</button>}
+      {app.status !== 'مكتمل' && <button className="dd-btn sm" onClick={() => handleStatusUpdate(app, 'مكتمل')}>مكتمل</button>}
+      {app.status !== 'ملغي' && <button className="dd-btn sm bad" onClick={() => handleStatusUpdate(app, 'ملغي')}>إلغاء</button>}
+    </div>
+  );
 
   return (
-    <div
-      dir="rtl"
-      className="min-h-screen bg-[#f3f5f1] text-slate-800 flex flex-col md:flex-row font-sans"
-    >
-      {/* إشعار عائم في أسفل الشاشة */}
+    <div dir="rtl" className="dd">
       {toast && (
-        <div className="fixed bottom-6 left-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl border bg-white border-emerald-200 text-slate-800">
-          <span
-            className={`w-2.5 h-2.5 rounded-full ${
-              toast.type === 'error' ? 'bg-rose-500' : 'bg-[#14805e]'
-            }`}
-          />
-          <span className="text-sm font-bold">{toast.message}</span>
+        <div className={`dd-toast ${toast.type === 'error' ? 'error' : ''}`}>
+          <i /> <span>{toast.message}</span>
         </div>
       )}
 
-      {/* ====================================================================
-          القائمة الجانبية اليمنى (مطابقة للصورة 100%)
-      ==================================================================== */}
-      <aside className="w-full md:w-72 bg-[#fafbf9] border-l border-slate-200/80 flex flex-col justify-between p-5 shrink-0">
-        <div>
-          {/* رأس القائمة والشعار */}
-          <div className="flex items-center justify-between pb-6 mb-5 border-b border-slate-200/70">
-            <div>
-              <h1 className="font-extrabold text-lg text-slate-800">
-                عيادة الأسنان الذكية
-              </h1>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs text-slate-500 font-medium">
-                  متصل بالقاعدة السحابية
-                </span>
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-[#147a60] flex items-center justify-center text-white shadow-sm">
-              <Stethoscope className="w-6 h-6" />
-            </div>
+      {/* ===================== الشريط الجانبي ===================== */}
+      <aside className="dd-side">
+        <div className="dd-logo">
+          <div className="mk"><Stethoscope size={21} /></div>
+          <div>
+            <b>عيادة الأسنان الذكية</b>
+            <small><span className="dd-live" /> متصلة بالقاعدة السحابية</small>
           </div>
-
-
-
-          <button
-            onClick={handleLogout}
-            className="w-full mb-4 py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-2 border border-rose-200 transition cursor-pointer"
-          >
-            🚪 تسجيل الخروج من الحساب
-          </button>
-
-
-
-
-
-
-          <div className="text-xs font-bold text-slate-400 px-2 mb-3">
-            القائمة الرئيسية
-          </div>
-
-          {/* عناصر التنقل */}
-          <nav className="space-y-2">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${
-                activeTab === 'dashboard'
-                  ? 'bg-[#147a60] text-white shadow-md shadow-teal-900/10'
-                  : 'text-slate-700 hover:bg-slate-200/50'
-              }`}
-            >
-              <span>لوحة التحكم</span>
-              <LayoutGrid className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={() => setActiveTab('patients')}
-              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${
-                activeTab === 'patients'
-                  ? 'bg-[#147a60] text-white shadow-md shadow-teal-900/10'
-                  : 'text-slate-700 hover:bg-slate-200/50'
-              }`}
-            >
-              <span
-                className={`px-2.5 py-0.5 text-xs rounded-full font-extrabold ${
-                  activeTab === 'patients'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-slate-200/80 text-slate-700'
-                }`}
-              >
-                {patients.length}
-              </span>
-              <div className="flex items-center gap-3">
-                <span>ملفات المرضى</span>
-                <Users className="w-5 h-5" />
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('appointments')}
-              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${
-                activeTab === 'appointments'
-                  ? 'bg-[#147a60] text-white shadow-md shadow-teal-900/10'
-                  : 'text-slate-700 hover:bg-slate-200/50'
-              }`}
-            >
-              <span
-                className={`px-2.5 py-0.5 text-xs rounded-full font-extrabold ${
-                  activeTab === 'appointments'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-slate-200/80 text-slate-700'
-                }`}
-              >
-                {appointments.filter((a: any) => a.status !== 'مكتمل').length}
-              </span>
-              <div className="flex items-center gap-3">
-                <span>حجز المواعيد</span>
-                <Calendar className="w-5 h-5" />
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('visits')}
-              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${
-                activeTab === 'visits'
-                  ? 'bg-[#147a60] text-white shadow-md shadow-teal-900/10'
-                  : 'text-slate-700 hover:bg-slate-200/50'
-              }`}
-            >
-              <span
-                className={`px-2.5 py-0.5 text-xs rounded-full font-extrabold ${
-                  activeTab === 'visits'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-slate-200/80 text-slate-700'
-                }`}
-              >
-                {visits.length}
-              </span>
-              <div className="flex items-center gap-3">
-                <span>الزيارات والمتابعة</span>
-                <Stethoscope className="w-5 h-5" />
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('services')}
-              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${
-                activeTab === 'services'
-                  ? 'bg-[#147a60] text-white shadow-md shadow-teal-900/10'
-                  : 'text-slate-700 hover:bg-slate-200/50'
-              }`}
-            >
-              <span
-                className={`px-2.5 py-0.5 text-xs rounded-full font-extrabold ${
-                  activeTab === 'services'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-slate-200/80 text-slate-700'
-                }`}
-              >
-                {services.length}
-              </span>
-              <div className="flex items-center gap-3">
-                <span>الخدمات والأسعار</span>
-                <Sparkles className="w-5 h-5" />
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('n8n')}
-              className={`w-full hidden items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all border ${
-                activeTab === 'n8n'
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                  : 'bg-[#eef1f6] text-slate-800 border-slate-200 hover:bg-slate-200/70'
-              }`}
-            >
-              <span className="px-2.5 py-0.5 text-[11px] rounded-full bg-blue-700 text-white font-bold">
-                Webhook
-              </span>
-              <div className="flex items-center gap-2.5">
-                <div className="text-right leading-tight">
-                  <div>الربط الذكي (n8n &</div>
-                  <div className="text-xs">(AI</div>
-                </div>
-                <Bot
-                  className={`w-5 h-5 ${
-                    activeTab === 'n8n' ? 'text-white' : 'text-blue-700'
-                  }`}
-                />
-              </div>
-            </button>
-          </nav>
         </div>
-
-        {/* الكارت السفلي الداكن في القائمة الجانبية */}
-        <div className="hidden mt-6 bg-[#0d2420] text-white p-4 rounded-2xl shadow-lg border border-teal-900/40">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full font-bold">
-              نشط
-            </span>
-            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-              <span>وكيل الذكاء الاصطناعي n8n</span>
-              <Bot className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-300 leading-relaxed text-right">
-            يمكن للوكيل الذكي تسجيل المرضى، حجز المواعيد، وتأكيدها تلقائياً عبر
-            Webhook.
-          </p>
+        <nav className="dd-nav">
+          {navItems.map((n: any) => (
+            <button key={n.id} className={activeTab === n.id ? 'on' : ''} onClick={() => setActiveTab(n.id)}>
+              {n.icon}
+              <span>{n.label}</span>
+              {n.count !== null && <span className="c num">{n.count}</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="dd-me">
+          <div className="av">{String(currentUser?.name || 'د').replace('د.', '').trim().charAt(0)}</div>
+          <span>{currentUser?.name || 'الطبيب'}</span>
+          <button onClick={handleLogout}>خروج</button>
         </div>
       </aside>
 
-      {/* ====================================================================
-          منطقة المحتوى الرئيسي
-      ==================================================================== */}
-      <main className="flex-1 p-4 md:p-7 overflow-y-auto space-y-6">
-        {/* البانر العلوي الموحد (مطابق للصور 100%) */}
-        <div className="bg-[#f8f9f7] rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
-          {/* العمود الأيمن: عنوان القسم والرابط الفعلي */}
-          <div className="flex-1 text-right">
-            <div className="flex flex-wrap items-center justify-start gap-3 mb-2">
-              <h2 className="text-2xl font-black text-slate-800">
-                {currentBannerInfo.title}
-              </h2>
-              <span className="hidden items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-[#147a60] border border-emerald-200">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>{currentBannerInfo.badge}</span>
-              </span>
-            </div>
-
-            <div className="hidden text-xs text-slate-500 font-medium mb-1.5">
-              مربوط فعلياً عبر HTTP Request بالرابط:
-            </div>
-            <div
-              onClick={() => handleCopy(currentBannerInfo.url)}
-              title="اضغط لنسخ الرابط"
-              className="hidden items-center gap-2 bg-white hover:bg-slate-50 cursor-pointer px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 font-mono text-xs transition-all"
-            >
-              <span dir="ltr">{currentBannerInfo.url}</span>
-              {copiedText === currentBannerInfo.url ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-slate-400" />
-              )}
-            </div>
+      {/* ===================== المحتوى ===================== */}
+      <main className="dd-main">
+        <div className="dd-head">
+          <div>
+            <h1>{currentBannerInfo.title}</h1>
+            <p>{subtitles[activeTab] || ''}</p>
           </div>
-
-          {/* العمود الأيسر: الأزرار الأربعة مرتبة كما في الصورة تماماً */}
-          <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 w-full lg:w-52 shrink-0">
-            <button
-              onClick={() => syncAllFromAPI(true)}
-              disabled={isSyncing}
-              className="w-full hidden items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#168a5c] hover:bg-[#12704a] text-white text-xs font-extrabold shadow-sm transition-all disabled:opacity-60"
-            >
-              <span>{currentBannerInfo.syncBtnText}</span>
-              <RefreshCw
-                className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`}
-              />
+          <div className="dd-acts">
+            <button className="dd-btn icon" onClick={() => syncAllFromAPI(true)} disabled={isSyncing} title="تحديث البيانات من الـ API" aria-label="تحديث">
+              <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
             </button>
-
-            <button
-              onClick={handlePushServicesToAPI}
-              disabled={isPushingServices}
-              className="w-full hidden items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#2557d6] hover:bg-[#1d46b0] text-white text-xs font-extrabold shadow-sm transition-all disabled:opacity-60"
-            >
-              <span>إرسال الخدمات للـ API الآن</span>
-              <RefreshCw
-                className={`w-4 h-4 ${isPushingServices ? 'animate-spin' : ''}`}
-              />
+            <button className="dd-btn" onClick={() => setPatientModal({ open: true, editing: null })}>
+              <UserPlus size={15} /> مريض جديد
             </button>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setPatientModal({ open: true, editing: null })}
-                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#eef1ee] hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
-              >
-                <span>مريض جديد</span>
-                <UserPlus className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                onClick={() =>
-                  setAppointmentModal({
-                    open: true,
-                    editing: null,
-                    prefill: null,
-                  })
-                }
-                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#147a60] hover:bg-[#0f604b] text-white text-xs font-bold shadow-sm transition-all"
-              >
-                <span>حجز موعد</span>
-                <Calendar className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <button className="dd-btn pri" onClick={() => setAppointmentModal({ open: true, editing: null, prefill: null })}>
+              <CalendarPlus size={15} /> حجز موعد
+            </button>
           </div>
         </div>
 
-        {/* ====================================================================
-            التبويب 1: لوحة التحكم (Dashboard)
-        ==================================================================== */}
+        {/* ---------- لوحة التحكم ---------- */}
         {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* الكروت الإحصائية الأربعة (نفس الترتيب والألوان في الصورة) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* 1. إجمالي ملفات المرضى */}
-              <div className="bg-[#f8f9f7] rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col items-center text-center justify-between">
-                <span className="text-xs font-bold text-slate-500 mb-3">
-                  إجمالي ملفات المرضى
-                </span>
-                <div className="flex items-center gap-4 my-1">
-                  <span className="text-4xl font-black text-slate-800">
-                    {patients.length}
-                  </span>
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#147a60] flex items-center justify-center">
-                    <Users className="w-6 h-6" />
-                  </div>
-                </div>
-                <span className="text-xs text-slate-500 mt-3">
-                  مسجلين في قاعدة البيانات
-                </span>
+          <>
+            <div className="dd-kpis">
+              <div className="dd-kpi">
+                <small>ملفات المرضى</small>
+                <div className="v num">{patients.length}</div>
+                <div className="s">مسجلين في قاعدة البيانات</div>
               </div>
-
-              {/* 2. المواعيد المؤكدة / الانتظار */}
-              <div className="bg-[#f8f9f7] rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col items-center text-center justify-between">
-                <span className="text-xs font-bold text-slate-500 mb-2">
-                  المواعيد المؤكدة / الانتظار
-                </span>
-                <div className="flex items-center gap-3 my-1">
-                  <div className="text-3xl font-black text-slate-800">
-                    {dashboardStats.confirmed}{' '}
-                    <span className="text-base font-bold text-amber-600">
-                      / {dashboardStats.pending}
-                    </span>
-                  </div>
-                  <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <Calendar className="w-6 h-6" />
-                  </div>
-                </div>
-                <div className="text-sm font-bold text-amber-600">انتظار</div>
-                <span className="text-xs text-slate-500 mt-1">
-                  مواعيد اليوم: {dashboardStats.todayCount}
-                </span>
+              <div className="dd-kpi">
+                <small>مؤكد / بانتظار التأكيد</small>
+                <div className="v num">{dashboardStats.confirmed} <i>/ {dashboardStats.pending}</i></div>
+                <div className="s">مواعيد اليوم: {dashboardStats.todayCount}</div>
               </div>
-
-              {/* 3. الزيارات والمتابعات الطبية */}
-              <div className="bg-[#f8f9f7] rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col items-center text-center justify-between">
-                <span className="text-xs font-bold text-slate-500 mb-3">
-                  الزيارات والمتابعات الطبية
-                </span>
-                <div className="flex items-center gap-4 my-1">
-                  <span className="text-4xl font-black text-slate-800">
-                    {visits.length}
-                  </span>
-                  <div className="w-11 h-11 rounded-2xl bg-teal-50 text-[#147a60] flex items-center justify-center">
-                    <Stethoscope className="w-6 h-6" />
-                  </div>
-                </div>
-                <span className="text-xs text-slate-500 mt-3">
-                  إجمالي التحصيل: {dashboardStats.totalRevenue} ر.س
-                </span>
+              <div className="dd-kpi">
+                <small>إجمالي التحصيل</small>
+                <div className="v num">{dashboardStats.totalRevenue} <i style={{ color: 'var(--muted)' }}>ج.م</i></div>
+                <div className="s">من {visits.length} زيارة مكتملة</div>
               </div>
-
-              {/* 4. عمليات وكيل الذكاء الاصطناعي (الكارت الأزرق) */}
-              <div className="bg-gradient-to-b from-[#1d56d8] to-[#1542ad] text-white rounded-3xl p-6 shadow-md flex flex-col items-center text-center justify-between">
-                <span className="text-xs font-bold text-blue-100 mb-3">
-                  عمليات وكيل الذكاء الاصطناعي
-                </span>
-                <div className="flex items-center gap-4 my-1">
-                  <span className="text-4xl font-black">
-                    {dashboardStats.aiTotal}
-                  </span>
-                  <div className="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center">
-                    <Bot className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-                <span className="text-xs text-blue-100 mt-3">
-                  حجوزات الذكاء: {dashboardStats.aiAppointments}
-                </span>
+              <div className="dd-kpi ai">
+                <small>عمليات الذكاء الاصطناعي</small>
+                <div className="v num">{dashboardStats.aiTotal}</div>
+                <div className="s">حجوزات عبر البوت: {dashboardStats.aiAppointments}</div>
               </div>
             </div>
 
-            {/* أحدث حجوزات المواعيد */}
-            <div className="bg-[#f8f9f7] rounded-3xl p-6 shadow-sm border border-slate-200/80">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-[#147a60]" />
-                  <span>أحدث حجوزات المواعيد</span>
-                </h3>
-                <button
-                  onClick={() => setActiveTab('appointments')}
-                  className="text-xs font-bold text-slate-500 hover:text-[#147a60]"
-                >
-                  &lt; عرض الكل
-                </button>
-              </div>
-
-              {appointments.length === 0 ? (
-                <div className="text-center py-10 text-slate-400 text-sm font-medium">
-                  لا توجد مواعيد مسجلة حالياً (العدد في الـ API: 0)
+            <div className="dd-grid">
+              <section className="dd-panel">
+                <div className="dd-ph">
+                  <h2>أحدث الحجوزات</h2>
+                  <button className="dd-link" onClick={() => setActiveTab('appointments')}>عرض الكل</button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {appointments.slice(0, 5).map((app) => (
-                    <div
-                      key={app.id}
-                      className="bg-white rounded-2xl p-4 border border-slate-200/70 flex flex-wrap items-center justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-[#147a60] font-black flex items-center justify-center">
-                          {String(app.patientName).charAt(0)}
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm text-slate-800">
-                            {app.patientName}
-                          </div>
-                          <div className="text-xs text-slate-500" dir="ltr">
-                            {app.phone} • {app.serviceName} ({app.price} ر.س)
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="text-left text-xs">
-                          <div className="font-bold text-slate-700">
-                            {app.date}
-                          </div>
-                          <div className="text-slate-400">{app.time}</div>
-                        </div>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            app.status === 'مؤكد'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : app.status === 'مكتمل'
-                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                              : app.status === 'ملغي'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}
-                        >
-                          {app.status}
-                        </span>
+                {recentList.length === 0 ? (
+                  <div className="dd-empty">لا توجد مواعيد مسجلة حالياً.</div>
+                ) : recentList.map((app: any) => (
+                  <div key={app.id} className="dd-row">
+                    <div className="dd-who">
+                      <div className="dd-av">{String(app.patientName).charAt(0)}</div>
+                      <div>
+                        <b>{app.patientName}</b>
+                        <small>{app.serviceName} · {app.price} ج.م</small>
                       </div>
                     </div>
-                  ))}
+                    <div className="dd-when num"><b>{app.date === todayStr ? 'اليوم' : app.date}</b>{app.time}</div>
+                    <span className={`dd-pill ${pillOf(app.status)}`}>{app.status}</span>
+                  </div>
+                ))}
+              </section>
+
+              <section className="dd-panel">
+                <div className="dd-ph">
+                  <h2>بانتظار التأكيد</h2>
+                  <span className="dd-pill wait num">{pendingList.length}</span>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ====================================================================
-            التبويب 2: ملفات المرضى (Patients - مطابق للصورة رقم 5)
-        ==================================================================== */}
-        {activeTab === 'patients' && (
-          <div className="space-y-6">
-            {/* شريط البحث وزر إضافة ملف مريض جديد */}
-            <div className="bg-[#f8f9f7] rounded-3xl p-4 shadow-sm border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="relative w-full sm:flex-1">
-                <Search className="w-5 h-5 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={patientSearch}
-                  onChange={(e) => setPatientSearch(e.target.value)}
-                  placeholder="ابحث باسم المريض أو رقم الجوال..."
-                  className="w-full pr-12 pl-4 py-3.5 rounded-2xl bg-[#eff1ee] border border-slate-200/80 text-sm focus:outline-none focus:border-[#147a60]"
-                />
-              </div>
-
-              <button
-                onClick={() => setPatientModal({ open: true, editing: null })}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#147a60] hover:bg-[#0f604b] text-white text-sm font-extrabold shadow-sm transition-all shrink-0"
-              >
-                <Plus className="w-5 h-5" />
-                <span>إضافة ملف مريض جديد</span>
-              </button>
-            </div>
-
-            {/* شبكة كروت المرضى */}
-            {filteredPatients.length === 0 ? (
-              <div className="bg-[#f8f9f7] rounded-3xl p-12 text-center border border-slate-200/80">
-                <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h4 className="font-bold text-slate-700 mb-1">
-                  لا توجد ملفات مرضى حالياً (العدد: 0)
-                </h4>
-                <p className="text-xs text-slate-400">
-                  يمكنك إضافة مريض جديد أو إرسال مريض عبر بوت n8n ثم الضغط على
-                  "تحديث المرضى من الـ API الآن"
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {filteredPatients.map((p) => (
-                  <div
-                    key={p.id}
-                    className="bg-[#f8f9f7] rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-start justify-between gap-4 mb-5">
-                      {/* بيانات المريض والحرف الأول */}
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-12 h-12 rounded-2xl bg-[#d8ede4] text-[#147a60] font-black text-lg flex items-center justify-center shrink-0">
-                          {String(p.name).trim().charAt(0)}
-                        </div>
-                        <div>
-                          <h3 className="font-extrabold text-lg text-slate-800">
-                            {p.name}
-                          </h3>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
-                            <span
-                              className="flex items-center gap-1 font-medium"
-                              dir="ltr"
-                            >
-                              <Phone className="w-3.5 h-3.5 text-[#147a60]" />
-                              {p.phone}
-                            </span>
-                            <span>•</span>
-                            <span>
-                              {p.age} سنة ({p.gender})
-                            </span>
-                          </div>
-                        </div>
+                {pendingList.length === 0 ? (
+                  <div className="dd-empty">لا توجد حجوزات تنتظر ردك.</div>
+                ) : pendingList.slice(0, 5).map((app: any) => (
+                  <div key={app.id} className="dd-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+                    <div className="dd-who">
+                      <div className="dd-av">{String(app.patientName).charAt(0)}</div>
+                      <div>
+                        <b>{app.patientName}</b>
+                        <small className="num">{app.date} · {app.time} · {app.serviceName}</small>
                       </div>
-
-                      {/* بادج وكيل الذكاء الاصطناعي كما في الصورة */}
-                      <span className="px-3 py-2 rounded-2xl text-[11px] font-bold bg-[#eaedf8] text-indigo-800 border border-indigo-200/80 text-center leading-snug max-w-[110px]">
-                        {p.source}
-                      </span>
                     </div>
-
-                    {/* صندوق التاريخ الطبي والملاحظات */}
-                    <div className="bg-[#eff1ee] rounded-2xl p-4 border border-slate-200/60 mb-4 text-center">
-                      <div className="text-xs font-bold text-slate-500 mb-1">
-                        التاريخ الطبي والملاحظات:
-                      </div>
-                      <p className="text-xs text-slate-700 font-medium leading-relaxed">
-                        {p.notes}
-                      </p>
-                    </div>
-
-                    {/* أزرار التحكم (حجز موعد / تعديل / حذف) */}
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-200/70">
-                      <button
-                        onClick={() =>
-                          setAppointmentModal({
-                            open: true,
-                            editing: null,
-                            prefill: { patientName: p.name, phone: p.phone },
-                          })
-                        }
-                        className="text-xs font-extrabold text-[#147a60] hover:underline flex items-center gap-1.5"
-                      >
-                        <CalendarPlus className="w-4 h-4" />
-                        <span>حجز موعد لهذا المريض</span>
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            setPatientModal({ open: true, editing: p })
-                          }
-                          className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-blue-600 text-xs font-bold flex items-center gap-1 transition-all"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>تعديل</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeletePatient(p.id)}
-                          className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 text-xs font-bold flex items-center gap-1 transition-all"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>حذف</span>
-                        </button>
-                      </div>
+                    <div className="dd-ops">
+                      <button className="dd-btn sm ok" onClick={() => handleStatusUpdate(app, 'مؤكد')}>تأكيد</button>
+                      <button className="dd-btn sm bad" onClick={() => handleStatusUpdate(app, 'ملغي')}>إلغاء</button>
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
+              </section>
+            </div>
+          </>
         )}
 
-        {/* ====================================================================
-            التبويب 3: حجز المواعيد (Appointments - مطابق للصورة رقم 7 و 23)
-        ==================================================================== */}
+        {/* ---------- المواعيد ---------- */}
         {activeTab === 'appointments' && (
-          <div className="space-y-6">
-            {/* شريط فلاتر الحالة وزر حجز موعد جديد */}
-            <div className="bg-[#f8f9f7] rounded-3xl p-4 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-2">
-                {['الكل', 'قيد الانتظار', 'مؤكد', 'مكتمل', 'ملغي'].map(
-                  (tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setAppointmentFilter(tab)}
-                      className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all ${
-                        appointmentFilter === tab
-                          ? 'bg-[#147a60] text-white shadow-sm'
-                          : 'bg-[#eff1ee] text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  )
-                )}
+          <>
+            <div className="dd-bar">
+              <div className="dd-tabs">
+                {['الكل', 'قيد الانتظار', 'مؤكد', 'مكتمل', 'ملغي'].map((tab) => (
+                  <button key={tab} className={appointmentFilter === tab ? 'on' : ''} onClick={() => setAppointmentFilter(tab)}>{tab}</button>
+                ))}
               </div>
-
-              <button
-                onClick={() =>
-                  setAppointmentModal({
-                    open: true,
-                    editing: null,
-                    prefill: null,
-                  })
-                }
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#147a60] hover:bg-[#0f604b] text-white text-xs font-extrabold shadow-sm transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span>حجز موعد جديد</span>
-              </button>
             </div>
-
-            {/* جدول المواعيد (نفس أعمدة وتصميم صورتك بالضبط) */}
-            <div className="bg-[#f8f9f7] rounded-3xl shadow-sm border border-slate-200/80 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-right border-collapse">
+            <div className="dd-panel">
+              <div className="dd-tw">
+                <table className="dd-table">
                   <thead>
-                    <tr className="border-b border-slate-200/80 text-slate-600 text-xs font-extrabold bg-[#eff1ee]/60">
-                      <th className="py-4 px-5">المريض</th>
-                      <th className="py-4 px-5">الخدمة المطلوبة</th>
-                      <th className="py-4 px-5">التاريخ والوقت</th>
-                      <th className="py-4 px-5">طريقة الحجز</th>
-                      <th className="py-4 px-5">الحالة</th>
-                      <th className="py-4 px-5">تأكيد / تغيير الحالة</th>
-                      <th className="py-4 px-5">إدارة</th>
+                    <tr>
+                      <th>المريض</th><th>الخدمة</th><th>الموعد</th><th>طريقة الحجز</th><th>الحالة</th><th>تغيير الحالة</th><th>إدارة</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200/60 text-sm">
+                  <tbody>
                     {filteredAppointments.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan="7"
-                          className="py-12 text-center text-slate-400 font-medium"
-                        >
-                          لا توجد مواعيد حالياً في هذا القسم
+                      <tr><td colSpan={7}><div className="dd-empty">لا توجد مواعيد في هذا القسم.</div></td></tr>
+                    ) : filteredAppointments.map((app: any) => (
+                      <tr key={app.id}>
+                        <td><b>{app.patientName}</b><small dir="ltr" style={{ textAlign: 'right' }}>{app.phone}</small></td>
+                        <td><b>{app.serviceName}</b><small>{app.price} ج.م</small></td>
+                        <td className="num"><b>{app.date}</b><small><Clock size={11} style={{ verticalAlign: '-1px' }} /> {app.time}</small></td>
+                        <td><span className="dd-src"><Bot size={12} /> {app.source}</span></td>
+                        <td><span className={`dd-pill ${pillOf(app.status)}`}>{app.status}</span></td>
+                        <td>{aptActions(app)}</td>
+                        <td>
+                          <div className="dd-ops">
+                            <button className="dd-btn sm icon" title="تعديل" onClick={() => setAppointmentModal({ open: true, editing: app, prefill: null })}><Edit3 size={14} /></button>
+                            <button className="dd-btn sm icon bad" title="حذف نهائي" onClick={() => handleDeleteAppointment(app.id)}><Trash2 size={14} /></button>
+                          </div>
                         </td>
                       </tr>
-                    ) : (
-                      filteredAppointments.map((app) => (
-                        <tr
-                          key={app.id}
-                          className="hover:bg-white/60 transition-all"
-                        >
-                          {/* المريض */}
-                          <td className="py-4 px-5">
-                            <div className="font-extrabold text-slate-800">
-                              {app.patientName}
-                            </div>
-                            <div
-                              className="text-xs text-slate-500 mt-0.5"
-                              dir="ltr"
-                            >
-                              {app.phone}
-                            </div>
-                          </td>
-
-                          {/* الخدمة المطلوبة */}
-                          <td className="py-4 px-5">
-                            <div className="font-bold text-slate-800">
-                              {app.serviceName}
-                            </div>
-                            <div className="text-xs font-extrabold text-[#147a60] mt-0.5">
-                              {app.price} ر.س
-                            </div>
-                          </td>
-
-                          {/* التاريخ والوقت */}
-                          <td className="py-4 px-5">
-                            <div className="font-extrabold text-slate-800">
-                              {app.date}
-                            </div>
-                            <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                              <Clock className="w-3.5 h-3.5" />
-                              <span>{app.time}</span>
-                            </div>
-                          </td>
-
-                          {/* طريقة الحجز */}
-                          <td className="py-4 px-5">
-                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl text-xs font-bold bg-[#eaedf8] text-indigo-800 border border-indigo-200/80">
-                              <Bot className="w-3.5 h-3.5" />
-                              <span>{app.source}</span>
-                            </span>
-                          </td>
-
-                          {/* الحالة */}
-                          <td className="py-4 px-5">
-                            <span
-                              className={`px-3.5 py-1 rounded-full text-xs font-extrabold ${
-                                app.status === 'مؤكد'
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : app.status === 'مكتمل'
-                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                  : app.status === 'ملغي'
-                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
-                              }`}
-                            >
-                              {app.status}
-                            </span>
-                          </td>
-
-                          {/* تأكيد / تغيير الحالة */}
-                          <td className="py-4 px-5">
-                            <div className="flex items-center gap-2">
-                              {app.status !== 'مؤكد' && (
-                                <button
-                                  onClick={() =>
-                                    handleStatusUpdate(app, 'مؤكد')
-                                  }
-                                  className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-extrabold transition-all"
-                                >
-                                  تأكيد
-                                </button>
-                              )}
-                              {app.status !== 'مكتمل' && (
-                                <button
-                                  onClick={() =>
-                                    handleStatusUpdate(app, 'مكتمل')
-                                  }
-                                  className="px-3 py-1.5 rounded-xl bg-[#e3f2ed] hover:bg-teal-100 text-[#147a60] text-xs font-extrabold transition-all"
-                                >
-                                  مكتمل
-                                </button>
-                              )}
-                              {app.status !== 'ملغي' && (
-                                <button
-                                  onClick={() =>
-                                    handleStatusUpdate(app, 'ملغي')
-                                  }
-                                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-extrabold transition-all"
-                                >
-                                  إلغاء
-                                </button>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* إدارة (تعديل وحذف) */}
-                          <td className="py-4 px-5">
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() =>
-                                  setAppointmentModal({
-                                    open: true,
-                                    editing: app,
-                                    prefill: null,
-                                  })
-                                }
-                                className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-blue-600 transition-all"
-                                title="تعديل"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteAppointment(app.id)}
-                                className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all"
-                                title="حذف نهائي"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                    ))}
                   </tbody>
                 </table>
               </div>
             </div>
-          </div>
+          </>
         )}
 
-        {/* ====================================================================
-            التبويب 4: الزيارات والمتابعة (Visits)
-        ==================================================================== */}
+        {/* ---------- المرضى ---------- */}
+        {activeTab === 'patients' && (
+          <>
+            <div className="dd-bar">
+              <div className="dd-search">
+                <Search size={16} />
+                <input className="dd-in" value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} placeholder="ابحث باسم المريض أو رقم الجوال..." />
+              </div>
+              <button className="dd-btn pri" onClick={() => setPatientModal({ open: true, editing: null })}><Plus size={15} /> ملف مريض جديد</button>
+            </div>
+            <div className="dd-panel">
+              <div className="dd-tw">
+                <table className="dd-table">
+                  <thead>
+                    <tr><th>المريض</th><th>الجوال</th><th>السن والنوع</th><th>التسجيل</th><th>التاريخ الطبي</th><th>إجراءات</th></tr>
+                  </thead>
+                  <tbody>
+                    {filteredPatients.length === 0 ? (
+                      <tr><td colSpan={6}><div className="dd-empty">لا توجد ملفات مرضى مطابقة.<br />أضف مريضاً جديداً أو انتظر تسجيلاً من البوت.</div></td></tr>
+                    ) : filteredPatients.map((p: any) => (
+                      <tr key={p.id}>
+                        <td><div className="dd-who"><div className="dd-av">{String(p.name).trim().charAt(0)}</div><b>{p.name}</b></div></td>
+                        <td className="num" dir="ltr" style={{ textAlign: 'right' }}>{p.phone}</td>
+                        <td className="num">{p.age} سنة · {p.gender}</td>
+                        <td><span className="dd-src">{p.source}</span></td>
+                        <td style={{ maxWidth: 240, color: 'var(--muted)', fontSize: 12 }}>{p.notes}</td>
+                        <td>
+                          <div className="dd-ops">
+                            <button className="dd-btn sm ok" onClick={() => setAppointmentModal({ open: true, editing: null, prefill: { patientName: p.name, phone: p.phone } })}>
+                              <CalendarPlus size={13} /> حجز
+                            </button>
+                            <button className="dd-btn sm icon" title="تعديل" onClick={() => setPatientModal({ open: true, editing: p })}><Edit3 size={14} /></button>
+                            <button className="dd-btn sm icon bad" title="حذف" onClick={() => handleDeletePatient(p.id)}><Trash2 size={14} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ---------- الزيارات ---------- */}
         {activeTab === 'visits' && (
-          <div className="space-y-6">
-            <div className="bg-[#f8f9f7] rounded-3xl p-5 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h3 className="font-extrabold text-base text-slate-800">
-                  سجل الزيارات المكتملة والتحصيل المالي
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  أي موعد تضغط أمامه على زر "مكتمل" ينتقل تلقائياً إلى هنا
-                  ويُحسب ضمن إجمالي تحصيل العيادة.
-                </p>
-              </div>
-              <button
-                onClick={() => setVisitModal({ open: true, editing: null })}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#147a60] hover:bg-[#0f604b] text-white text-xs font-extrabold shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>تسجيل زيارة جديدة</span>
-              </button>
+          <>
+            <div className="dd-bar">
+              <p style={{ color: 'var(--muted)', fontSize: 13 }}>أي موعد تضغط عليه «مكتمل» ينتقل هنا تلقائياً ويُحسب في التحصيل.</p>
+              <button className="dd-btn pri" onClick={() => setVisitModal({ open: true, editing: null })}><Plus size={15} /> تسجيل زيارة</button>
             </div>
-
-            {visits.length === 0 ? (
-              <div className="bg-[#f8f9f7] rounded-3xl p-12 text-center border border-slate-200/80">
-                <Stethoscope className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h4 className="font-bold text-slate-700 mb-1">
-                  لا توجد زيارات مكتملة حالياً (0)
-                </h4>
-                <p className="text-xs text-slate-400">
-                  اضغط على "مكتمل" أمام أي حجز في قسم حجز المواعيد أو أضف زيارة
-                  جديدة يدوياً.
-                </p>
+            <div className="dd-panel">
+              <div className="dd-tw">
+                <table className="dd-table">
+                  <thead><tr><th>المريض</th><th>الخدمة</th><th>التاريخ</th><th>المحصّل</th><th>ملاحظات الطبيب</th><th>إجراءات</th></tr></thead>
+                  <tbody>
+                    {visits.length === 0 ? (
+                      <tr><td colSpan={6}><div className="dd-empty">لا توجد زيارات مكتملة بعد.</div></td></tr>
+                    ) : visits.map((v: any) => (
+                      <tr key={v.id}>
+                        <td><b>{v.patientName}</b><small dir="ltr" style={{ textAlign: 'right' }}>{v.phone}</small></td>
+                        <td>{v.serviceName}</td>
+                        <td className="num">{v.date}</td>
+                        <td className="num"><b style={{ color: 'var(--teal-d)' }}>{v.paidAmount} ج.م</b></td>
+                        <td style={{ maxWidth: 260, color: 'var(--muted)', fontSize: 12 }}>{v.notes}</td>
+                        <td>
+                          <div className="dd-ops">
+                            <button className="dd-btn sm icon" title="تعديل" onClick={() => setVisitModal({ open: true, editing: v })}><Edit3 size={14} /></button>
+                            <button className="dd-btn sm icon bad" title="حذف" onClick={() => handleDeleteVisit(v.id)}><Trash2 size={14} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {visits.map((v) => (
-                  <div
-                    key={v.id}
-                    className="bg-[#f8f9f7] rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h4 className="font-extrabold text-base text-slate-800">
-                            {v.patientName}
-                          </h4>
-                          <span className="text-xs text-slate-500" dir="ltr">
-                            {v.phone} • {v.date}
-                          </span>
-                        </div>
-                        <span className="px-3.5 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-[#147a60] border border-emerald-200">
-                          تم تحصيل: {v.paidAmount} ج.م
-                        </span>
-                      </div>
-
-                      <div className="bg-[#eff1ee] rounded-2xl p-4 border border-slate-200/60 text-xs space-y-1.5">
-                        <div>
-                          <span className="font-bold text-slate-500">
-                            الخدمة الطبية:{' '}
-                          </span>
-                          <span className="font-extrabold text-slate-800">
-                            {v.serviceName}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-bold text-slate-500">
-                            ملاحظات الطبيب:{' '}
-                          </span>
-                          <span className="text-slate-700">{v.notes}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-slate-200/60">
-                      <button
-                        onClick={() =>
-                          setVisitModal({ open: true, editing: v })
-                        }
-                        className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold flex items-center gap-1"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>تعديل</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteVisit(v.id)}
-                        className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>حذف</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            </div>
+          </>
         )}
 
-        {/* ====================================================================
-            التبويب 5: الخدمات والأسعار (Services)
-        ==================================================================== */}
+        {/* ---------- الخدمات ---------- */}
         {activeTab === 'services' && (
-          <div className="space-y-6">
-            <div className="bg-[#f8f9f7] rounded-3xl p-5 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h3 className="font-extrabold text-base text-slate-800">
-                  قائمة خدمات العيادة والأسعار المعتمدة
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  يمكنك تعديل الأسعار أو إضافة خدمة جديدة ثم الضغط على "إرسال
-                  الخدمات للـ API الآن" ليقرأها بوت n8n.
-                </p>
-              </div>
-              <button
-                onClick={() => setServiceModal({ open: true, editing: null })}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#147a60] hover:bg-[#0f604b] text-white text-xs font-extrabold shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>إضافة خدمة جديدة</span>
-              </button>
+          <>
+            <div className="dd-bar">
+              <p style={{ color: 'var(--muted)', fontSize: 13 }}>عدّل الأسعار أو أضف خدمة، والبوت يقرأ القائمة من الـ API.</p>
+              <button className="dd-btn pri" onClick={() => setServiceModal({ open: true, editing: null })}><Plus size={15} /> خدمة جديدة</button>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {services.map((srv) => (
-                <div
-                  key={srv.id}
-                  className="bg-[#f8f9f7] rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div>
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-[#147a60] border border-emerald-200">
-                          {srv.category}
-                        </span>
-                        <h4 className="font-extrabold text-lg text-slate-800 mt-2">
-                          {srv.name}
-                        </h4>
-                      </div>
-                      <div className="text-left">
-                        <div className="text-xl font-black text-[#147a60]">
-                          {srv.price} ر.س
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          {srv.duration}
-                        </div>
-                      </div>
+            <div className="dd-svc">
+              {services.map((srv: any) => (
+                <div key={srv.id} className="dd-sc">
+                  <div className="top">
+                    <div>
+                      <span className="dd-pill ok">{srv.category}</span>
+                      <h3 style={{ marginTop: 8 }}>{srv.name}</h3>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      {srv.description}
-                    </p>
+                    <div className="pr num">{srv.price} <small>ج.م</small></div>
                   </div>
-
-                  <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-slate-200/60">
-                    <button
-                      onClick={() =>
-                        setServiceModal({ open: true, editing: srv })
-                      }
-                      className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold flex items-center gap-1"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>تعديل</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteService(srv.id)}
-                      className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>حذف</span>
-                    </button>
+                  <p>{srv.description}</p>
+                  <div className="ft">
+                    <span><Clock size={12} style={{ verticalAlign: '-2px' }} /> {srv.duration}</span>
+                    <div className="dd-ops">
+                      <button className="dd-btn sm icon" title="تعديل" onClick={() => setServiceModal({ open: true, editing: srv })}><Edit3 size={14} /></button>
+                      <button className="dd-btn sm icon bad" title="حذف" onClick={() => handleDeleteService(srv.id)}><Trash2 size={14} /></button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* ====================================================================
-            التبويب 6: الربط الذكي (n8n & AI)
-        ==================================================================== */}
-        {activeTab === 'n8n' && (
-          <div className="space-y-6">
-            <div className="bg-[#f8f9f7] rounded-3xl p-6 shadow-sm border border-slate-200/80">
-              <h3 className="font-extrabold text-lg text-slate-800 mb-2 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[#147a60]" />
-                <span>روابط الـ API الثلاثة الثابتة الخاصة بك في n8n</span>
-              </h3>
-              <p className="text-xs text-slate-500 mb-5">
-                جميع الروابط التالية تتصل مباشرة بالجداول المستقلة بدون أي أخطاء
-                404، وأي تغيير في MockAPI ينعكس فوراً في التطبيق.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  {
-                    title: '1. رابط الخدمات (Services)',
-                    url: API_ENDPOINTS.SERVICES,
-                    ok: apiStatus.servicesOk,
-                  },
-                  {
-                    title: '2. رابط المرضى (Patients)',
-                    url: API_ENDPOINTS.PATIENTS,
-                    ok: apiStatus.patientsOk,
-                  },
-                  {
-                    title: '3. رابط المواعيد (Appointments)',
-                    url: API_ENDPOINTS.APPOINTMENTS,
-                    ok: apiStatus.appointmentsOk,
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.url}
-                    className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col justify-between gap-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-xs text-slate-800">
-                        {item.title}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          item.ok
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-rose-50 text-rose-600'
-                        }`}
-                      >
-                        {item.ok ? 'متصل 200 OK' : 'تحقق من الجدول'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                      <code
-                        className="text-[11px] font-mono text-slate-700 truncate"
-                        dir="ltr"
-                      >
-                        {item.url}
-                      </code>
-                      <button
-                        onClick={() => handleCopy(item.url)}
-                        className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-emerald-50 text-slate-600 shrink-0"
-                      >
-                        {copiedText === item.url ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          </>
         )}
       </main>
 
-      {/* ====================================================================
-          النافذة المنبثقة: إضافة / تعديل مريض
-      ==================================================================== */}
-      {patientModal.open && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-            <h3 className="font-extrabold text-lg text-slate-800 mb-4">
-              {patientModal.editing
-                ? 'تعديل بيانات المريض'
-                : 'إضافة ملف مريض جديد'}
-            </h3>
-            <form onSubmit={handleSavePatient} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  اسم
-                </label>
-                <input
-                  name="name"
-                  required
-                  defaultValue={patientModal.editing?.name || ''}
-                  placeholder="مثال: يسي حلمي جاد"
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-[#147a60]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    رقم الجوال
-                  </label>
-                  <input
-                    name="phone"
-                    required
-                    defaultValue={patientModal.editing?.phone || ''}
-                    placeholder="01278479297"
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-[#147a60]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    العمر
-                  </label>
-                  <input
-                    name="age"
-                    required
-                    defaultValue={patientModal.editing?.age || '19'}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-[#147a60]"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    النوع
-                  </label>
-                  <select
-                    name="gender"
-                    defaultValue={patientModal.editing?.gender || 'ذكر'}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  >
-                    <option value="ذكر">ذكر</option>
-                    <option value="أنثى">أنثى</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    طريقة التسجيل
-                  </label>
-                  <select
-                    name="source"
-                    defaultValue={
-                      patientModal.editing?.source ||
-                      'وكيل الذكاء الاصطناعي (n8n)'
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  >
-                    <option value="وكيل الذكاء الاصطناعي (n8n)">
-                      وكيل الذكاء الاصطناعي (n8n)
-                    </option>
-                    <option value="يدوي - الاستقبال">يدوي - الاستقبال</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  التاريخ الطبي والملاحظات
-                </label>
-                <textarea
-                  name="notes"
-                  rows="3"
-                  defaultValue={
-                    patientModal.editing?.notes || 'تم التسجيل عبر بوت'
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPatientModal({ open: false, editing: null })
-                  }
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-[#147a60] text-white font-extrabold"
-                >
-                  حفظ في التطبيق والـ API
-                </button>
-              </div>
-            </form>
+      {/* ===================== نافذة المريض ===================== */}
+      {patientModal.open && shell(
+        patientModal.editing ? 'تعديل بيانات المريض' : 'إضافة ملف مريض جديد',
+        () => setPatientModal({ open: false, editing: null }),
+        <form onSubmit={handleSavePatient} className="dd-form">
+          {field('الاسم', <input className="dd-in" name="name" required defaultValue={patientModal.editing?.name || ''} placeholder="مثال: يسي حلمي جاد" />)}
+          <div className="dd-r2">
+            {field('رقم الجوال', <input className="dd-in" name="phone" required defaultValue={patientModal.editing?.phone || ''} placeholder="01278479297" />)}
+            {field('العمر', <input className="dd-in" name="age" required defaultValue={patientModal.editing?.age || '19'} />)}
           </div>
-        </div>
+          <div className="dd-r2">
+            {field('النوع', <select className="dd-in" name="gender" defaultValue={patientModal.editing?.gender || 'ذكر'}><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select>)}
+            {field('طريقة التسجيل', <select className="dd-in" name="source" defaultValue={patientModal.editing?.source || 'وكيل الذكاء الاصطناعي (n8n)'}><option value="وكيل الذكاء الاصطناعي (n8n)">وكيل الذكاء الاصطناعي (n8n)</option><option value="يدوي - الاستقبال">يدوي - الاستقبال</option></select>)}
+          </div>
+          {field('التاريخ الطبي والملاحظات', <textarea className="dd-in" name="notes" rows={3} defaultValue={patientModal.editing?.notes || 'تم التسجيل عبر بوت'} />)}
+          <div className="dd-fa">
+            <button type="button" className="dd-btn" onClick={() => setPatientModal({ open: false, editing: null })}>إلغاء</button>
+            <button type="submit" className="dd-btn pri">حفظ</button>
+          </div>
+        </form>
       )}
 
-      {/* ====================================================================
-          النافذة المنبثقة: حجز / تعديل موعد
-      ==================================================================== */}
-      {appointmentModal.open && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-            <h3 className="font-extrabold text-lg text-slate-800 mb-4">
-              {appointmentModal.editing
-                ? 'تعديل بيانات الموعد'
-                : 'حجز موعد جديد'}
-            </h3>
-            <form
-              onSubmit={handleSaveAppointment}
-              className="space-y-4 text-xs"
-            >
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  اسم المريض
-                </label>
-                <select
-  name="patientName"
-  required
-  defaultValue={appointmentModal.editing?.patientName || appointmentModal.prefill?.patientName || ""}
-  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 text-right"
->
-  <option value="" disabled>اختر مريضاً من القائمة...</option>
-  {patients.map((patient) => (
-    <option key={patient.id} value={patient.name}>
-      {patient.name}
-    </option>
-  ))}
-</select>
-              </div>
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  رقم الجوال
-                </label>
-                <input
-                  name="phone"
-                  required
-                  defaultValue={
-                    appointmentModal.editing?.phone ||
-                    appointmentModal.prefill?.phone ||
-                    ''
-                  }
-                  placeholder="01278479297"
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  الخدمة المطلوبة
-                </label>
-                <select
-                  name="serviceName"
-                  defaultValue={
-                    appointmentModal.editing?.serviceName || 'كشف عام'
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                >
-                  {services.map((s) => (
-                    <option key={s.id} value={s.name}>
-                      {s.name} ({s.price} ر.س)
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    التاريخ
-                  </label>
-                  <input
-                    type="date"
-                    name="date"
-                    required
-                    defaultValue={
-                      appointmentModal.editing?.date ||
-                      new Date().toISOString().split('T')[0]
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    الوقت
-                  </label>
-                  <input
-                    type="time"
-                    name="time"
-                    required
-                    defaultValue={appointmentModal.editing?.time || '16:00'}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    الحالة
-                  </label>
-                  <select
-                    name="status"
-                    defaultValue={appointmentModal.editing?.status || 'مؤكد'}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  >
-                    <option value="مؤكد">مؤكد</option>
-                    <option value="قيد الانتظار">قيد الانتظار</option>
-                    <option value="مكتمل">مكتمل</option>
-                    <option value="ملغي">ملغي</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    طريقة الحجز
-                  </label>
-                  <select
-                    name="source"
-                    defaultValue={
-                      appointmentModal.editing?.source ||
-                      'وكيل الذكاء الاصطناعي (n8n)'
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  >
-                    <option value="وكيل الذكاء الاصطناعي (n8n)">
-                      وكيل الذكاء الاصطناعي (n8n)
-                    </option>
-                    <option value="يدوي - الاستقبال">يدوي - الاستقبال</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAppointmentModal({
-                      open: false,
-                      editing: null,
-                      prefill: null,
-                    })
-                  }
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-[#147a60] text-white font-extrabold"
-                >
-                  حفظ في التطبيق والـ API
-                </button>
-              </div>
-            </form>
+      {/* ===================== نافذة الموعد ===================== */}
+      {appointmentModal.open && shell(
+        appointmentModal.editing ? 'تعديل بيانات الموعد' : 'حجز موعد جديد',
+        () => setAppointmentModal({ open: false, editing: null, prefill: null }),
+        <form onSubmit={handleSaveAppointment} className="dd-form">
+          {field('اسم المريض',
+            <select className="dd-in" name="patientName" required defaultValue={appointmentModal.editing?.patientName || appointmentModal.prefill?.patientName || ''}>
+              <option value="" disabled>اختر مريضاً من القائمة...</option>
+              {patients.map((patient: any) => <option key={patient.id} value={patient.name}>{patient.name}</option>)}
+            </select>
+          )}
+          {field('رقم الجوال', <input className="dd-in" name="phone" required defaultValue={appointmentModal.editing?.phone || appointmentModal.prefill?.phone || ''} placeholder="01278479297" />)}
+          {field('الخدمة المطلوبة',
+            <select className="dd-in" name="serviceName" defaultValue={appointmentModal.editing?.serviceName || 'كشف عام'}>
+              {services.map((s: any) => <option key={s.id} value={s.name}>{s.name} ({s.price} ج.م)</option>)}
+            </select>
+          )}
+          <div className="dd-r2">
+            {field('التاريخ', <input className="dd-in" type="date" name="date" required defaultValue={appointmentModal.editing?.date || new Date().toISOString().split('T')[0]} />)}
+            {field('الوقت', <input className="dd-in" type="time" name="time" required defaultValue={appointmentModal.editing?.time || '16:00'} />)}
           </div>
-        </div>
+          <div className="dd-r2">
+            {field('الحالة', <select className="dd-in" name="status" defaultValue={appointmentModal.editing?.status || 'مؤكد'}><option value="مؤكد">مؤكد</option><option value="قيد الانتظار">قيد الانتظار</option><option value="مكتمل">مكتمل</option><option value="ملغي">ملغي</option></select>)}
+            {field('طريقة الحجز', <select className="dd-in" name="source" defaultValue={appointmentModal.editing?.source || 'وكيل الذكاء الاصطناعي (n8n)'}><option value="وكيل الذكاء الاصطناعي (n8n)">وكيل الذكاء الاصطناعي (n8n)</option><option value="يدوي - الاستقبال">يدوي - الاستقبال</option></select>)}
+          </div>
+          <div className="dd-fa">
+            <button type="button" className="dd-btn" onClick={() => setAppointmentModal({ open: false, editing: null, prefill: null })}>إلغاء</button>
+            <button type="submit" className="dd-btn pri">حفظ</button>
+          </div>
+        </form>
       )}
 
-      {/* ====================================================================
-          النافذة المنبثقة: إضافة / تعديل زيارة
-      ==================================================================== */}
-      {visitModal.open && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-            <h3 className="font-extrabold text-lg text-slate-800 mb-4">
-              {visitModal.editing
-                ? 'تعديل سجل الزيارة'
-                : 'تسجيل زيارة طبية جديدة'}
-            </h3>
-            <form onSubmit={handleSaveVisit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  اسم المريض
-                </label>
-                <input
-                  name="patientName"
-                  required
-                  defaultValue={visitModal.editing?.patientName || ''}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    رقم الهاتف
-                  </label>
-                  <input
-                    name="phone"
-                    required
-                    defaultValue={visitModal.editing?.phone || ''}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    المبلغ المحصل (ر.س)
-                  </label>
-                  <input
-                    type="number"
-                    name="paidAmount"
-                    required
-                    defaultValue={visitModal.editing?.paidAmount || 150}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    الخدمة المنفذة
-                  </label>
-                  <input
-                    name="serviceName"
-                    required
-                    defaultValue={visitModal.editing?.serviceName || 'كشف عام'}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    التاريخ
-                  </label>
-                  <input
-                    type="date"
-                    name="date"
-                    required
-                    defaultValue={
-                      visitModal.editing?.date ||
-                      new Date().toISOString().split('T')[0]
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  التشخيص والملاحظات
-                </label>
-                <textarea
-                  name="notes"
-                  rows="2"
-                  defaultValue={visitModal.editing?.notes || ''}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setVisitModal({ open: false, editing: null })}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-[#147a60] text-white font-extrabold"
-                >
-                  حفظ الزيارة
-                </button>
-              </div>
-            </form>
+      {/* ===================== نافذة الزيارة ===================== */}
+      {visitModal.open && shell(
+        visitModal.editing ? 'تعديل سجل الزيارة' : 'تسجيل زيارة طبية جديدة',
+        () => setVisitModal({ open: false, editing: null }),
+        <form onSubmit={handleSaveVisit} className="dd-form">
+          {field('اسم المريض', <input className="dd-in" name="patientName" required defaultValue={visitModal.editing?.patientName || ''} />)}
+          <div className="dd-r2">
+            {field('رقم الهاتف', <input className="dd-in" name="phone" required defaultValue={visitModal.editing?.phone || ''} />)}
+            {field('المبلغ المحصل (ج.م)', <input className="dd-in" type="number" name="paidAmount" required defaultValue={visitModal.editing?.paidAmount || 150} />)}
           </div>
-        </div>
+          <div className="dd-r2">
+            {field('الخدمة المنفذة', <input className="dd-in" name="serviceName" required defaultValue={visitModal.editing?.serviceName || 'كشف عام'} />)}
+            {field('التاريخ', <input className="dd-in" type="date" name="date" required defaultValue={visitModal.editing?.date || new Date().toISOString().split('T')[0]} />)}
+          </div>
+          {field('التشخيص والملاحظات', <textarea className="dd-in" name="notes" rows={3} defaultValue={visitModal.editing?.notes || ''} />)}
+          <div className="dd-fa">
+            <button type="button" className="dd-btn" onClick={() => setVisitModal({ open: false, editing: null })}>إلغاء</button>
+            <button type="submit" className="dd-btn pri">حفظ الزيارة</button>
+          </div>
+        </form>
       )}
 
-      {/* ====================================================================
-          النافذة المنبثقة: إضافة / تعديل خدمة
-      ==================================================================== */}
-      {serviceModal.open && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-            <h3 className="font-extrabold text-lg text-slate-800 mb-4">
-              {serviceModal.editing ? 'تعديل الخدمة' : 'إضافة خدمة جديدة'}
-            </h3>
-            <form onSubmit={handleSaveService} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  اسم الخدمة
-                </label>
-                <input
-                  name="name"
-                  required
-                  defaultValue={serviceModal.editing?.name || ''}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    السعر (ر.س)
-                  </label>
-                  <input
-                    type="number"
-                    name="price"
-                    required
-                    defaultValue={serviceModal.editing?.price || 150}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1.5">
-                    المدة
-                  </label>
-                  <input
-                    name="duration"
-                    defaultValue={serviceModal.editing?.duration || '30 دقيقة'}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  التصنيف
-                </label>
-                <select
-                  name="category"
-                  defaultValue={serviceModal.editing?.category || 'عام'}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                >
-                  <option value="عام">عام</option>
-                  <option value="تجميلي">تجميلي</option>
-                  <option value="علاجي">علاجي</option>
-                  <option value="جراحة">جراحة</option>
-                </select>
-              </div>
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5">
-                  وصف الخدمة
-                </label>
-                <textarea
-                  name="description"
-                  rows="2"
-                  defaultValue={serviceModal.editing?.description || ''}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setServiceModal({ open: false, editing: null })
-                  }
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-[#147a60] text-white font-extrabold"
-                >
-                  حفظ الخدمة
-                </button>
-              </div>
-            </form>
+      {/* ===================== نافذة الخدمة ===================== */}
+      {serviceModal.open && shell(
+        serviceModal.editing ? 'تعديل الخدمة' : 'إضافة خدمة جديدة',
+        () => setServiceModal({ open: false, editing: null }),
+        <form onSubmit={handleSaveService} className="dd-form">
+          {field('اسم الخدمة', <input className="dd-in" name="name" required defaultValue={serviceModal.editing?.name || ''} />)}
+          <div className="dd-r2">
+            {field('السعر (ج.م)', <input className="dd-in" type="number" name="price" required defaultValue={serviceModal.editing?.price || 150} />)}
+            {field('المدة', <input className="dd-in" name="duration" defaultValue={serviceModal.editing?.duration || '30 دقيقة'} />)}
           </div>
-              
-        </div>
+          {field('التصنيف', <select className="dd-in" name="category" defaultValue={serviceModal.editing?.category || 'عام'}><option value="عام">عام</option><option value="تجميلي">تجميلي</option><option value="علاجي">علاجي</option><option value="جراحة">جراحة</option></select>)}
+          {field('وصف الخدمة', <textarea className="dd-in" name="description" rows={3} defaultValue={serviceModal.editing?.description || ''} />)}
+          <div className="dd-fa">
+            <button type="button" className="dd-btn" onClick={() => setServiceModal({ open: false, editing: null })}>إلغاء</button>
+            <button type="submit" className="dd-btn pri">حفظ الخدمة</button>
+          </div>
+        </form>
       )}
     </div>
   );
+
 }
