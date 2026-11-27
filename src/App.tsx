@@ -641,6 +641,8 @@ export default function App() {
 
   // حالات التحميل والاتصال
   const [isSyncing, setIsSyncing] = useState(false);
+  const [patientsSynced, setPatientsSynced] = useState(false);
+const [apptsSynced, setApptsSynced] = useState(false);
   const [isPushingServices, setIsPushingServices] = useState(false);
   const [apiStatus, setApiStatus] = useState({
     patientsOk: true,
@@ -755,6 +757,7 @@ export default function App() {
           const patData = await resPat.json();
           if (Array.isArray(patData)) {
             setApiStatus((prev) => ({ ...prev, patientsOk: true }));
+            setPatientsSynced(true);
             // هنا الـ API هو المصدر الحقيقي: لو 0 يعرض 0، ولو 3 يعرض الـ 3 كاملين!
             const normalizedPat = patData
               .map((item, idx) => normalizePatientRecord(item, idx))
@@ -781,6 +784,7 @@ export default function App() {
           const appData = await resApp.json();
           if (Array.isArray(appData)) {
             setApiStatus((prev) => ({ ...prev, appointmentsOk: true }));
+            setApptsSynced(true);
             const normalizedApp = appData
               .map((item, idx) =>
                 normalizeAppointmentRecord(item, idx, currentServices)
@@ -842,10 +846,17 @@ export default function App() {
   // جلب البيانات تلقائياً عند فتح الصفحة (Reload) وكل 12 ثانية لالتقاط أي حجز جديد من بوت n8n
   useEffect(() => {
     syncAllFromAPI(false);
-    const timer = setInterval(() => {
-      syncAllFromAPI(false);
-    }, 60000);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => syncAllFromAPI(false), 15000);
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') syncAllFromAPI(false);
+    };
+    document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   // ============================================================================
