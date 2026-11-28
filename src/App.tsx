@@ -1025,14 +1025,21 @@ const [apptsSynced, setApptsSynced] = useState(false);
       // 3. مسح المريض من الـ API
       await fetch(`${API_ENDPOINTS.PATIENTS}/${strId}`, { method: 'DELETE' });
 
+      const cleanP = (n: any) => normalizeDigits(n).replace(/\D/g, '');
+      const phoneShared = patients.some((p: any) => String(p.id) !== strId && cleanP(p.phone) === cleanP(patientToDelete.phone));
+      const isHis = (apt: any) =>
+        String(apt.patientName || '').trim().toLowerCase() === String(patientToDelete.name || '').trim().toLowerCase() ||
+        (!phoneShared && cleanP(apt.phone) && cleanP(apt.phone) === cleanP(patientToDelete.phone));
+
       // 4. الحذف المتسلسل للمواعيد: (البحث برقم التليفون فقط)
       const aptsToDelete = appointments.filter(
-        (apt: any) => apt.phone === patientToDelete.phone
+        //(apt: any) => apt.phone === patientToDelete.phone
+        (apt: any) => isHis(apt)
       );
 
       // مسح مواعيده من الشاشة (باستثناء اللي تليفونهم مش مطابق)
       setAppointments((prev: any) =>
-        prev.filter((apt: any) => apt.phone !== patientToDelete.phone)
+        prev.filter((apt: any) => !isHis(apt))
       );
 
       // مسح مواعيده من الـ API
@@ -2022,10 +2029,55 @@ const [apptsSynced, setApptsSynced] = useState(false);
           (a.patientName === apt.patientName && a.date === apt.date)
       )?.status || apt.status;
 
-    const nextApt = myAppointments.find((a: any) => {
-      const s = liveStatusOf(a);
-      return s === 'قيد الانتظار' || s === 'مؤكد';
-    });
+    //const nextApt = myAppointments.find((a: any) => {
+     // const s = liveStatusOf(a);
+    //  return s === 'قيد الانتظار' || s === 'مؤكد';
+  //  });
+
+  const cleanDigits = (n: any) =>
+  String(n || '').replace(/[٠-٩]/g, (d: any) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '');
+
+//const existsAtClinic = (a: any) => {
+ // const aptOk = !apptsSynced || !/^\d+$/.test(String(a.id)) || appointments.some((x: any) => String(x.id) === String(a.id));
+ // const patOk = !patientsSynced || patients.some((p: any) =>
+ // (a.patientId && String(p.id) === String(a.patientId)) ||
+  //(String(p.name || '').trim().toLowerCase() === String(a.patientName || '').trim().toLowerCase() &&
+  // (!cleanDigits(a.phone) || cleanDigits(p.phone) === cleanDigits(a.phone))));
+ /// return aptOk && patOk;
+//};
+
+const existsAtClinic = (a: any) => {
+  const aptName = String(a.patientName || '').trim().toLowerCase();
+  const aptPhone = cleanDigits(a.phone);
+  const aptOk = !apptsSynced || !/^\d+$/.test(String(a.id)) || appointments.some((x: any) =>
+    String(x.id) === String(a.id) &&
+    String(x.patientName || '').trim().toLowerCase() === aptName
+  );
+  const patOk = !patientsSynced || patients.some((p: any) =>
+    String(p.name || '').trim().toLowerCase() === aptName &&
+    (!aptPhone || !cleanDigits(p.phone) || cleanDigits(p.phone) === aptPhone)
+  );
+  return aptOk && patOk;
+};
+
+//const patientAccepted = (pat: any) => !patientsSynced || patients.some((p: any) =>
+ // String(p.id) === String(pat.id) ||
+//  (cleanDigits(p.phone) && cleanDigits(p.phone) === cleanDigits(pat.phone) &&
+ //  String(p.name || '').trim().toLowerCase() === String(pat.name || '').trim().toLowerCase()));
+
+ const patientAccepted = (pat: any) => !patientsSynced || patients.some((p: any) =>
+  String(p.name || '').trim().toLowerCase() === String(pat.name || '').trim().toLowerCase() &&
+  cleanDigits(p.phone) === cleanDigits(pat.phone)
+);
+
+const selectedPatRemoved = !!selectedPatientForBook && myRegisteredPatients.some((p: any) => p.name === selectedPatientForBook && !patientAccepted(p));
+
+
+const nextApt = myAppointments.find((a: any) => {
+  const s = liveStatusOf(a);
+  return existsAtClinic(a) && (s === 'قيد الانتظار' || s === 'مؤكد');
+});
+
 
     const selectedSrv = services.find(
       (s: any) => s.name === selectedServiceForBook
@@ -2336,7 +2388,8 @@ const [apptsSynced, setApptsSynced] = useState(false);
                             apt.status === 'مؤكد')
                       );
                       const hasActive = activeBooking ? true : false;
-                      const isAcceptedByDoctor = patients.some((p: any) => {
+                     // const isAcceptedByDoctor = patients.some((p: any) => {
+                        const isAcceptedByDoctor = !patientsSynced || patients.some((p: any) => {
                         if (!p.phone || !pat.phone) return false;
                         const cleanPhone = (num: any) =>
                           String(num)
@@ -2344,7 +2397,8 @@ const [apptsSynced, setApptsSynced] = useState(false);
                               String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))
                             )
                             .replace(/\D/g, '');
-                        return cleanPhone(p.phone) === cleanPhone(pat.phone);
+                      // return cleanPhone(p.phone) === cleanPhone(pat.phone);
+                      return String(p.id) === String(pat.id) || (cleanPhone(p.phone) === cleanPhone(pat.phone) && String(p.name || '').trim().toLowerCase() === String(pat.name || '').trim().toLowerCase());
                       });
 
                       return isAcceptedByDoctor ? (
@@ -2567,14 +2621,15 @@ const [apptsSynced, setApptsSynced] = useState(false);
                     >
                       <option value="">اختر المريض</option>
                       {myRegisteredPatients.map((p: any, idx: number) => {
-                        const locked = hasActiveUncompletedBooking(p.name);
-                        return (
-                          <option key={`${p.id}-${idx}`} value={p.name}>
-                            {p.name}
-                            {locked ? ' (لديه حجز نشط)' : ''}
-                          </option>
-                        );
-                      })}
+  const locked = hasActiveUncompletedBooking(p.name);
+  const removed = !patientAccepted(p);
+  return (
+    <option key={`${p.id}-${idx}`} value={p.name} disabled={removed}>
+      {p.name}
+      {removed ? ' (محذوف من العيادة)' : locked ? ' (لديه حجز نشط)' : ''}
+    </option>
+  );
+})}
                     </select>
                     <select
                       className="pp-in"
@@ -2692,7 +2747,7 @@ const [apptsSynced, setApptsSynced] = useState(false);
                 </div>
               ) : (
                 <div className="pp-tl">
-                  {myAppointments.map((apt: any) => {
+                  {myAppointments.map((apt: any, idx: number) => {
                     const aptKey = `${apt.patientName}-${apt.date}-${apt.time}`;
                     const completedHistory = JSON.parse(
                       localStorage.getItem('clinic_completed_apts') || '[]'
@@ -2709,12 +2764,15 @@ const [apptsSynced, setApptsSynced] = useState(false);
                     }
                     const visited =
                       isVisitedNow || completedHistory.includes(aptKey);
-                    const meta = visited
-                      ? { t: 'تمت الزيارة', c: 'done' }
-                      : statusMeta(liveStatusOf(apt));
+                  //  const meta = visited
+                    
+                    //  ? { t: 'تمت الزيارة', c: 'done' }
+                   //   : statusMeta(liveStatusOf(apt));
+                   const isGone = !visited && !existsAtClinic(apt);
+const meta = isGone ? { t: 'حُذف من العيادة', c: 'bad' } : visited ? { t: 'تمت الزيارة', c: 'done' } : statusMeta(liveStatusOf(apt));
 
                     return (
-                      <div key={apt.id} className="pp-apt">
+                      <div key={`${apt.id}-${apt.patientName}-${idx}`} className="pp-apt">
                         <div className="pp-date">
                           <b>{apt.date}</b>
                           <span>{apt.time}</span>
@@ -2723,15 +2781,31 @@ const [apptsSynced, setApptsSynced] = useState(false);
                           <h3>{apt.service || apt.serviceName}</h3>
                           <p>
                             {apt.patientName} · {apt.doctor || 'د. طارق السعيد'}
-                            {visited ? ' · يمكنه الحجز مجدداً' : ''}
+                            {isGone ? ' · تم حذف هذا الموعد من قبل العيادة' : visited ? ' · يمكنه الحجز مجدداً' : ''}
                           </p>
                         </div>
-                        <span
-                          className={`pp-pill ${meta.c}`}
-                          style={{ marginRight: 0 }}
-                        >
-                          {meta.t}
-                        </span>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+  <span className={`pp-pill ${meta.c}`} style={{ marginRight: 0 }}>{meta.t}</span>
+  {isGone && (
+    <button className="pp-danger" style={{ border: 0, borderRadius: 10, padding: '7px 12px', fontSize: 12, fontWeight: 700 }}
+      onClick={async () => {
+        const left = savedPortalApts.filter((x: any) => String(x.id) !== String(apt.id));
+        localStorage.setItem(storageAptsKey, JSON.stringify(left));
+        if (SUPABASE_URL && SUPABASE_KEY && currentUser?.email) {
+          try {
+            await fetch(`${SUPABASE_URL}/rest/v1/patient_accounts?email=eq.${encodeURIComponent(currentUser.email.trim().toLowerCase())}`, {
+              method: 'PATCH',
+              headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ my_appointments: left }),
+            });
+          } catch (err) { console.error('Supabase Delete Error:', err); }
+        }
+        setPortalMessage({ type: 'success', text: 'تمت إزالة الحجز من قائمتك.' });
+      }}>
+      إزالة
+    </button>
+  )}
+</div>
                       </div>
                     );
                   })}
